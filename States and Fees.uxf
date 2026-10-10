@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<diagram program="umlet" version="15.1">
+  <zoom_level>6</zoom_level>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>438</x>
+      <y>228</y>
+      <w>150</w>
+      <h>108</h>
+    </coordinates>
+    <panel_attributes>BookCopy
+--
+-copyId: String
+-state: CopyState
+--
++reserve(): void
++checkOut(): void
++checkIn(): void
++markOverdue(): void
+~setState(state: CopyState): void</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>426</x>
+      <y>420</y>
+      <w>168</w>
+      <h>96</h>
+    </coordinates>
+    <panel_attributes>«interface»
+/CopyState/
+--
+--
++reserve(copy: BookCopy): void
++checkOut(copy: BookCopy): void
++checkIn(copy: BookCopy): void
++markOverdue(copy: BookCopy): void
++name(): String</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>150</x>
+      <y>588</y>
+      <w>168</w>
+      <h>84</h>
+    </coordinates>
+    <panel_attributes>AvailableState
+--
+--
++reserve(copy: BookCopy): void
++checkOut(copy: BookCopy): void
++checkIn(copy: BookCopy): void
++markOverdue(copy: BookCopy): void
++name(): String</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>336</x>
+      <y>588</y>
+      <w>168</w>
+      <h>84</h>
+    </coordinates>
+    <panel_attributes>ReservedState
+--
+--
++reserve(copy: BookCopy): void
++checkOut(copy: BookCopy): void
++checkIn(copy: BookCopy): void
++markOverdue(copy: BookCopy): void
++name(): String</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>522</x>
+      <y>588</y>
+      <w>168</w>
+      <h>84</h>
+    </coordinates>
+    <panel_attributes>OnLoanState
+--
+--
++reserve(copy: BookCopy): void
++checkOut(copy: BookCopy): void
++checkIn(copy: BookCopy): void
++markOverdue(copy: BookCopy): void
++name(): String</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>708</x>
+      <y>588</y>
+      <w>168</w>
+      <h>84</h>
+    </coordinates>
+    <panel_attributes>OverdueState
+--
+--
++reserve(copy: BookCopy): void
++checkOut(copy: BookCopy): void
++checkIn(copy: BookCopy): void
++markOverdue(copy: BookCopy): void
++name(): String</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1038</x>
+      <y>228</y>
+      <w>210</w>
+      <h>66</h>
+    </coordinates>
+    <panel_attributes>Loan
+--
+-dueDate: LocalDate
+-returnDate: LocalDate
+--
++calculateFee(policy: LateFeePolicy): BigDecimal</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1038</x>
+      <y>420</y>
+      <w>240</w>
+      <h>54</h>
+    </coordinates>
+    <panel_attributes>«interface»
+/LateFeePolicy/
+--
+--
++calculateFee(loan: Loan, today: LocalDate): BigDecimal</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>942</x>
+      <y>588</y>
+      <w>240</w>
+      <h>66</h>
+    </coordinates>
+    <panel_attributes>StandardFeePolicy
+--
+-dailyRate: BigDecimal
+-maxFee: BigDecimal
+--
++calculateFee(loan: Loan, today: LocalDate): BigDecimal</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1206</x>
+      <y>588</y>
+      <w>240</w>
+      <h>66</h>
+    </coordinates>
+    <panel_attributes>StudentFeePolicy
+--
+-graceDays: int
+-dailyRate: BigDecimal
+--
++calculateFee(loan: Loan, today: LocalDate): BigDecimal</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1398</x>
+      <y>402</y>
+      <w>126</w>
+      <h>84</h>
+    </coordinates>
+    <panel_attributes>«enumeration»
+MemberType
+--
+STANDARD
+STUDENT
+--
++feePolicy(): LateFeePolicy
++borrowLimit(): int</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>504</x>
+      <y>330</y>
+      <w>42</w>
+      <h>102</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-
+m1=1
+m2=1
+current</panel_attributes>
+    <additional_attributes>10.0;150.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>228</x>
+      <y>510</y>
+      <w>246</w>
+      <h>90</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;.</panel_attributes>
+    <additional_attributes>391.0;10.0;10.0;130.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>414</x>
+      <y>510</y>
+      <w>96</w>
+      <h>90</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;.</panel_attributes>
+    <additional_attributes>137.0;10.0;10.0;130.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>522</x>
+      <y>510</y>
+      <w>96</w>
+      <h>90</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;.</panel_attributes>
+    <additional_attributes>10.0;10.0;137.0;130.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>552</x>
+      <y>510</y>
+      <w>246</w>
+      <h>90</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;.</panel_attributes>
+    <additional_attributes>10.0;10.0;391.0;130.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1134</x>
+      <y>288</y>
+      <w>54</w>
+      <h>144</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;.
+«uses»</panel_attributes>
+    <additional_attributes>35.0;220.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1056</x>
+      <y>468</y>
+      <w>78</w>
+      <h>132</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;.</panel_attributes>
+    <additional_attributes>110.0;10.0;10.0;200.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1188</x>
+      <y>468</y>
+      <w>150</w>
+      <h>132</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;.</panel_attributes>
+    <additional_attributes>10.0;10.0;230.0;200.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1272</x>
+      <y>426</y>
+      <w>138</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;.
+«selects»</panel_attributes>
+    <additional_attributes>10.0;29.0;210.0;10.0</additional_attributes>
+  </element>
+</diagram>
