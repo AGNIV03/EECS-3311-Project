@@ -1,0 +1,27 @@
+# Local Claude Code notes and working docs
+CLAUDE.md
+docs/
+
+# Local secrets
+.env
+.env.*
+!.env.example
+config.local.json
+
+# Local database
+data/*.db
+
+# Build output
+build/
+out/
+.gradle/
+bin/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+Thumbs.db
+.DS_Store
