@@ -1,8 +1,10 @@
 package libraryagent.config;
 
 import java.nio.file.Path;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Application settings. Values come from {@code .env} in the working directory, and real
@@ -10,19 +12,21 @@ import java.util.Optional;
  */
 public final class AppConfig {
 
-    public static final String DEFAULT_MODEL = "claude-haiku-5-5";
+    /** The only model the application uses. Deliberately not configurable. */
+    public static final String MODEL = "claude-sonnet-5-5";
+    public static final String DEFAULT_EFFORT = "medium";
+    private static final Set<String> EFFORTS = Set.of("low", "medium", "high", "xhigh", "max");
     private static final String KEY_PLACEHOLDER = "YOUR_LOCAL_API_KEY_HERE";
 
     private final String apiKey;
-    private final String model;
     private final String effort;
     private final int maxSteps;
     private final Path dbPath;
 
     AppConfig(Map<String, String> fileValues, Map<String, String> environment) {
         this.apiKey = read("ANTHROPIC_API_KEY", fileValues, environment, "");
-        this.model = read("LLM_MODEL", fileValues, environment, DEFAULT_MODEL);
-        this.effort = read("LLM_EFFORT", fileValues, environment, "low");
+        String requestedEffort = read("LLM_EFFORT", fileValues, environment, DEFAULT_EFFORT).toLowerCase(Locale.ROOT);
+        this.effort = EFFORTS.contains(requestedEffort) ? requestedEffort : DEFAULT_EFFORT;
         this.maxSteps = parsePositiveInt(read("AGENT_MAX_STEPS", fileValues, environment, "8"), 8);
         this.dbPath = Path.of(read("DB_PATH", fileValues, environment, "data/library.db"));
     }
@@ -45,9 +49,10 @@ public final class AppConfig {
     }
 
     public String model() {
-        return model;
+        return MODEL;
     }
 
+    /** Reasoning effort sent with each request: low, medium, high, xhigh or max. */
     public String effort() {
         return effort;
     }

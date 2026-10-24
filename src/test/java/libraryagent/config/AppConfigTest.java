@@ -14,20 +14,33 @@ class AppConfigTest {
     @Test
     void environmentOverridesDotEnvFile() {
         AppConfig config = new AppConfig(
-                Map.of("LLM_MODEL", "from-file", "AGENT_MAX_STEPS", "5"),
-                Map.of("LLM_MODEL", "from-env"));
-        assertEquals("from-env", config.model());
+                Map.of("LLM_EFFORT", "low", "AGENT_MAX_STEPS", "5"),
+                Map.of("LLM_EFFORT", "high"));
+        assertEquals("high", config.effort());
         assertEquals(5, config.maxSteps());
     }
 
     @Test
     void defaultsApplyWhenNothingConfigured() {
         AppConfig config = new AppConfig(Map.of(), Map.of());
-        assertEquals(AppConfig.DEFAULT_MODEL, config.model());
-        assertEquals("low", config.effort());
+        assertEquals("medium", config.effort());
         assertEquals(8, config.maxSteps());
         assertEquals(Path.of("data/library.db"), config.dbPath());
         assertFalse(config.llmEnabled());
+    }
+
+    @Test
+    void modelIsAlwaysSonnetAndCannotBeOverridden() {
+        AppConfig config = new AppConfig(Map.of("LLM_MODEL", "claude-haiku-5-5"),
+                Map.of("LLM_MODEL", "claude-haiku-5-5"));
+        assertEquals("claude-sonnet-5-5", config.model());
+    }
+
+    @Test
+    void unknownEffortFallsBackToMedium() {
+        AppConfig config = new AppConfig(Map.of("LLM_EFFORT", "turbo"), Map.of());
+        assertEquals("medium", config.effort());
+        assertEquals("xhigh", new AppConfig(Map.of("LLM_EFFORT", "XHigh"), Map.of()).effort());
     }
 
     @Test
@@ -53,10 +66,10 @@ class AppConfigTest {
         Map<String, String> values = DotEnv.parse(List.of(
                 "# comment",
                 "",
-                "export LLM_MODEL=\"claude-sonnet-5-5\"",
+                "export LLM_EFFORT=\"high\"",
                 "DB_PATH='x.db'",
                 "BROKEN_LINE"));
-        assertEquals("claude-sonnet-5-5", values.get("LLM_MODEL"));
+        assertEquals("high", values.get("LLM_EFFORT"));
         assertEquals("x.db", values.get("DB_PATH"));
         assertEquals(2, values.size());
     }
