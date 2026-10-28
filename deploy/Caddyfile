@@ -1,0 +1,15 @@
+{$DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+	}
+
+	reverse_proxy app:8080 {
+		# Replace (not append) the client address, so visitors can't spoof it to dodge rate limits.
+		header_up X-Forwarded-For {remote_host}
+	}
+}

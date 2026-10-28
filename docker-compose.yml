@@ -1,0 +1,38 @@
+# Library Agent web version behind Caddy (automatic HTTPS).
+# Usage: see deploy/DEPLOY.md. Settings come from .env (never committed).
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_PATH: /app/data/library.db
+      WEB_PORT: "8080"
+      TRUST_PROXY: "true"     # client IPs come from Caddy's X-Forwarded-For
+      COOKIE_SECURE: "true"   # the site is only served over HTTPS
+    volumes:
+      - library-data:/app/data
+    expose:
+      - "8080"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in .env, e.g. DOMAIN=library.example.com}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+
+volumes:
+  library-data:
+  caddy-data:
+  caddy-config:

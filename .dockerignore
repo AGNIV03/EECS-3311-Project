@@ -1,0 +1,13 @@
+.git
+.gradle
+build
+data
+docs
+.env
+.env.*
+!.env.example
+CLAUDE.md
+*.uxf
+*.png
+*.pdf
+deploy
