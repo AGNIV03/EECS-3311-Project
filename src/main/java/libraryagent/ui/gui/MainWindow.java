@@ -36,9 +36,11 @@ final class MainWindow extends BorderPane implements LibraryEventListener {
     private final Tab chatTab = new Tab("Chat");
     private final Tab catalogTab = new Tab("Catalog");
     private final Tab accountTab = new Tab("Account");
+    private final Tab librarianTab = new Tab("Librarian");
     private final ChatView chat;
     private final CatalogView catalog;
     private final AccountView account;
+    private final LibrarianView librarian;
     private final StartView start;
 
     MainWindow(AgentController controller, Gui gui) {
@@ -47,10 +49,12 @@ final class MainWindow extends BorderPane implements LibraryEventListener {
         this.chat = new ChatView(controller, gui, this);
         this.catalog = new CatalogView(controller, gui, this);
         this.account = new AccountView(controller, gui, this);
+        this.librarian = new LibrarianView(controller, gui, this);
         this.start = new StartView(controller, gui, this);
         chatTab.setContent(chat);
         catalogTab.setContent(catalog);
         accountTab.setContent(account);
+        librarianTab.setContent(librarian);
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
         Label name = new Label("📚 Library Agent");
@@ -83,6 +87,9 @@ final class MainWindow extends BorderPane implements LibraryEventListener {
         tabs.getTabs().setAll(chatTab, catalogTab);
         if (controller.currentMember().isPresent()) {
             tabs.getTabs().add(accountTab);
+        }
+        if (controller.currentMember().map(Member::isLibrarian).orElse(false)) {
+            tabs.getTabs().add(librarianTab);
         }
         setCenter(tabs);
         refreshAll();
@@ -122,6 +129,7 @@ final class MainWindow extends BorderPane implements LibraryEventListener {
         updateHeader();
         catalog.refresh();
         account.refresh();
+        librarian.refresh();
     }
 
     // ---- Shared actions ------------------------------------------------------------------
