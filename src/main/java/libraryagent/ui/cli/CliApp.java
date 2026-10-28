@@ -9,6 +9,10 @@ import java.nio.file.Files;
 import java.time.Clock;
 import java.util.Arrays;
 import java.util.List;
+import libraryagent.agent.AgentFactory;
+import libraryagent.agent.AgentResponse;
+import libraryagent.agent.Planner;
+import libraryagent.agent.llm.ClaudeClient;
 import libraryagent.command.CommandResult;
 import libraryagent.config.AppConfig;
 import libraryagent.controller.AccountSummary;
@@ -52,9 +56,13 @@ public class CliApp {
         }
         BufferedReader in = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
         try (LibraryServices services = LibraryServices.open(config.dbPath(), Clock.systemDefaultZone())) {
-            AgentController controller = new AgentController(services, new SessionContext());
+            Planner planner = config.apiKey()
+                    .map(key -> AgentFactory.createPlanner(services, new ClaudeClient(key, config.effort()),
+                            config.maxSteps()))
+                    .orElse(null);
+            AgentController controller = new AgentController(services, new SessionContext(), planner);
             controller.subscribe(new CliNotifier(System.out, controller));
-            CliApp app = new CliApp(in, System.out, controller, config.llmEnabled());
+            CliApp app = new CliApp(in, System.out, controller, controller.assistantAvailable());
             int memberFlag = options.indexOf("--member");
             if (memberFlag >= 0 && memberFlag + 1 < options.size()) {
                 app.dispatch(new CliAction("login", List.of(options.get(memberFlag + 1))));
@@ -246,7 +254,14 @@ public class CliApp {
             out.println("The AI assistant is turned off (no API key configured). Type 'help' for commands.");
             return;
         }
-        out.println("Unknown command. Type 'help'. (Chatting with the assistant arrives in the next version.)");
+        out.println("(thinking...)");
+        out.flush();
+        AgentResponse response = controller.chat(text);
+        out.println(response.text());
+        for (int i = 0; i < response.books().size(); i++) {
+            Book book = response.books().get(i);
+            out.println(CliPresenter.bookLine(i + 1, book, controller.availability(book)));
+        }
     }
 
     // ---- Helpers -------------------------------------------------------------------------

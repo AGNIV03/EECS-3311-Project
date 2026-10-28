@@ -3,6 +3,8 @@ package libraryagent.controller;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
+import libraryagent.agent.AgentResponse;
+import libraryagent.agent.Planner;
 import libraryagent.command.AddToReadingListCommand;
 import libraryagent.command.CheckOutCommand;
 import libraryagent.command.CommandResult;
@@ -33,10 +35,37 @@ public class AgentController {
 
     private final LibraryServices services;
     private final SessionContext session;
+    private final Planner planner;
 
+    /** A controller without the AI assistant (no API key configured). */
     public AgentController(LibraryServices services, SessionContext session) {
+        this(services, session, null);
+    }
+
+    public AgentController(LibraryServices services, SessionContext session, Planner planner) {
         this.services = services;
         this.session = session;
+        this.planner = planner;
+    }
+
+    // ---- AI assistant --------------------------------------------------------------------
+
+    public boolean assistantAvailable() {
+        return planner != null;
+    }
+
+    /** Sends a plain-language message to the agent for the current session. */
+    public AgentResponse chat(String message) {
+        if (planner == null) {
+            return AgentResponse.failure(
+                    "The AI assistant is turned off because no API key is configured. You can still use every "
+                            + "feature through the menus or commands.");
+        }
+        if (message == null || message.isBlank()) {
+            return AgentResponse.failure("Please type a message.");
+        }
+        return planner.run(session.getSessionId(), session.getCurrentMember().orElse(null),
+                session.getHistory(), message.strip());
     }
 
     // ---- Session -------------------------------------------------------------------------
@@ -45,12 +74,20 @@ public class AgentController {
     public Member login(String memberId) {
         Member member = services.members().requireMember(memberId);
         session.login(member);
+        resetConversation();
         services.circulation().expireReadyHolds();
         return member;
     }
 
     public void logout() {
         session.logout();
+        resetConversation();
+    }
+
+    private void resetConversation() {
+        if (planner != null) {
+            planner.resetConversation(session.getSessionId());
+        }
     }
 
     public Optional<Member> currentMember() {
