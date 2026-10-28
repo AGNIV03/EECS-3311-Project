@@ -1,12 +1,12 @@
 # Library Agent
 
-An AI agent for a public library, written in Java 21 for the EECS 3311 course project. Members find, reserve, borrow, return and rate books by **talking to the agent in plain language**, in a command-line interface or a JavaFX desktop app. Librarians use the same app to manage the catalogue, check books in and out, and follow up overdue loans.
+An AI agent for a public library, written in Java 21 for the EECS 3311 course project. Members find, reserve, borrow, return and rate books by **talking to the agent in plain language**, in a command-line interface, a JavaFX desktop app, or a web version hosted online. Librarians use the same app to manage the catalogue, check books in and out, and follow up overdue loans.
 
 > "Reserve two sci-fi books under 300 pages, whichever are available."
 
 A request like this would normally mean several searches, availability checks and hold forms. The agent plans the steps itself: it searches the catalogue, checks which copies are free, reserves them, and summarises what it did. Every rule (borrowing limits, copy states, fees, hold queues) is enforced by ordinary Java code. The language model only chooses which tools to call.
 
-**Status:** Stage 2 (implementation) is in progress; submission is due Nov 10, 2026. The CLI and the AI agent work today. The JavaFX GUI is being built in the final week. See [Feature status](#features) below.
+**Status:** Stage 2 (implementation) is in progress; submission is due Nov 10, 2026. All 14 features work end to end in the CLI, with the AI agent. The web server and its deployment setup are ready. The JavaFX GUI and the browser interface are being built in the final week. See [Feature status](#features) below.
 
 ---
 
@@ -18,6 +18,7 @@ A request like this would normally mean several searches, availability checks an
 - [Setup](#setup)
 - [Running the application](#running-the-application)
 - [Using the CLI](#using-the-cli)
+- [Web version and deployment](#web-version-and-deployment)
 - [Testing](#testing)
 - [Configuration reference](#configuration-reference)
 - [Project structure](#project-structure)
@@ -31,22 +32,22 @@ The system specifies 14 features (F01–F14) in the Stage 1 design. ✅ works en
 
 | ID | Feature | Type | Status |
 |---|---|---|---|
-| F01 | Conversational registration with reading preferences | Hybrid | 🟡 Registration and preferences in the CLI; registration by chat in progress |
+| F01 | Conversational registration with reading preferences | Hybrid | ✅ CLI (by chat or the `register` form) |
 | F02 | Natural-language catalogue search ("something like The Hobbit, not too long") | Hybrid | ✅ CLI |
-| F03 | Reading lists (create, add, remove, reorder) | Hybrid | 🟡 CLI commands; editing by chat in progress |
+| F03 | Reading lists (create, add, remove, reorder) | Hybrid | ✅ CLI (commands and chat) |
 | F04 | Multi-book find and reserve in one request | Hybrid | ✅ CLI |
 | F05 | Hold queue with hold-ready notifications | Deterministic | ✅ CLI |
 | F06 | Checkout with borrowing limits (5 standard, 8 student) | Deterministic | ✅ CLI |
 | F07 | Book return with late fees (desk and self-service by chat) | Deterministic / hybrid | ✅ CLI |
 | F08 | Due dates, renewals, overdue detection and late fees | Deterministic | ✅ CLI |
-| F09 | Personalised recommendations and AI-curated reading lists | Hybrid | ⬜ In progress |
+| F09 | Personalised recommendations and AI-curated reading lists | Hybrid | ✅ CLI |
 | F10 | Grounded book Q&A (answers only from the catalogue record) | AI | ✅ CLI |
-| F11 | Catalogue management with AI genre tagging | Hybrid | 🟡 Adding books works; AI genre suggestions in progress |
+| F11 | Catalogue management with AI genre tagging | Hybrid | ✅ CLI |
 | F12 | Undo last action (from commands, menus or chat) | Deterministic | ✅ CLI |
 | F13 | Conversation memory ("reserve the second one") | AI | ✅ CLI |
-| F14 | Reading feedback tracking (liked / neutral / disliked) | Hybrid | ⬜ Storage done; ratings in progress |
+| F14 | Reading feedback tracking (liked / neutral / disliked) | Hybrid | ✅ CLI (`rate` command or saying so in chat) |
 
-Every feature will be available from both the GUI and the CLI.
+Every feature will also be available in the JavaFX GUI and the browser interface (in progress).
 
 ---
 
@@ -54,7 +55,7 @@ Every feature will be available from both the GUI and the CLI.
 
 - **Model:** Claude Sonnet 5.5 (`claude-sonnet-5-5`) through the Anthropic Messages API, using native tool calling. It is the only model the app uses.
 - **Loop:** the `Planner` sends the conversation and the list of tools to the model. The model either asks for tools to run, whose results are fed back, or gives a final answer. A step limit stops runaway loops.
-- **Tools:** the agent can search the catalogue, read a book's full record, check availability, reserve, return, renew, view the account, and undo. Each tool validates its arguments before calling a Java service, so the model can never break a library rule.
+- **Tools (15):** search the catalogue, read a book's record, check availability, reserve, return, renew, view the account, register a member, manage reading lists, record a rating, get recommendations, save a curated list, and undo. AI genre tagging for new books is a separate, one-shot model call. Each tool validates its arguments before calling a Java service, so the model can never break a library rule.
 - **Grounding:** the app only shows books that tools actually returned. The model cannot invent a title and have it appear as a result.
 - **Safety:**
   - Book descriptions and other tool output are treated as data, never as instructions. The sample catalogue includes one book with a planted instruction, so this can be tested.
@@ -91,6 +92,7 @@ Design patterns used:
 | Template Method | `agent/tools/AbstractTool` | Every tool validates its arguments before acting |
 | Facade | `controller/AgentController` | One entry point and one set of permission checks for both UIs |
 | Adapter | `agent/llm/ClaudeClient` | Wraps the Anthropic SDK behind the app's own `LLMClient` interface |
+| Decorator | `agent/llm/BudgetedLLMClient` | Adds a daily spending cap to any `LLMClient` (web version) |
 | MVC | JavaFX views → `AgentController` → services | (GUI, in progress) |
 
 **Tech stack:** Java 21, Gradle (wrapper included), JavaFX 21, SQLite (`sqlite-jdbc`), Jackson, Anthropic Java SDK 3.2.0, JUnit 6.
@@ -143,13 +145,16 @@ Run these from the project folder. On macOS/Linux use `./gradlew` instead of `.\
 .\gradlew.bat runCli -q --console=plain
 ```
 
-**CLI options** (passed with `--args`):
+**CLI options** (passed with `--args`; combine as needed):
 ```powershell
 .\gradlew.bat runCli -q --console=plain --args="--member M001"              # log in on start
 .\gradlew.bat runCli -q --console=plain --args="--reset-db --member LIB001"  # fresh sample data, as the librarian
 ```
 - `--member <id>`: log in as this member when the CLI starts.
 - `--reset-db`: delete `data/library.db` so it is recreated from the sample data.
+- `--verbose`: print each tool the assistant calls, with its arguments and outcome.
+
+When the CLI exits, it prints the tokens the assistant used and an estimated cost.
 
 **GUI (JavaFX):**
 ```powershell
@@ -189,10 +194,13 @@ Type a command, or just type what you want in plain English. Lines that aren't c
 | `history` | Every book you have borrowed |
 | `lists` / `list create\|show\|add\|remove\|move "<name>" ...` | Manage reading lists |
 | `undo` | Undo your last action |
+| `rate <isbn> liked\|neutral\|disliked [comment]` | Rate a book you borrowed |
+| `tracking on\|off` | Turn reading-feedback tracking on or off |
+| `recommend` | Books picked from your preferences and ratings (no AI) |
 | `checkout <memberId> <copyId>` | *(librarian)* Lend a copy |
 | `return <copyId>` | *(librarian)* Check a copy in |
 | `overdue` | *(librarian)* List overdue loans and notify borrowers |
-| `addbook` | *(librarian)* Add a book (asks for its details) |
+| `addbook` | *(librarian)* Add a book (asks for its details; the assistant suggests subgenres) |
 | `help` / `exit` | Show help, or quit |
 
 ### Example session
@@ -222,6 +230,26 @@ More things to try:
 
 ---
 
+## Web version and deployment
+
+The same application also runs as a web server with a JSON API, for hosting on a public site:
+
+```powershell
+.\gradlew.bat runWeb        # http://localhost:8080
+```
+
+- Each browser gets its own session (cookie), with its own login, undo history and conversation.
+- Protections for a public site:
+  - a daily AI spending cap (`DAILY_BUDGET_USD`)
+  - per-visitor chat limits
+  - message size limits
+  - librarian sign-in only with `LIBRARIAN_PASSCODE`
+- The browser interface is in progress. Until then, `/` shows a placeholder and the API is under `/api/...` (for example `/api/health`).
+
+To host it on a VPS with HTTPS on your own domain (Docker and Caddy), follow **[deploy/DEPLOY.md](deploy/DEPLOY.md)**.
+
+---
+
 ## Testing
 
 ```powershell
@@ -246,6 +274,11 @@ All settings live in `.env`; environment variables with the same names take prec
 | `LLM_EFFORT` | `medium` | Model reasoning effort: `low`, `medium`, `high`, `xhigh` or `max` |
 | `AGENT_MAX_STEPS` | `8` | Maximum tool-calling steps for one message |
 | `DB_PATH` | `data/library.db` | SQLite database file |
+| `WEB_PORT` | `8080` | Web version: listening port |
+| `DAILY_BUDGET_USD` | `2.00` | Web version: estimated AI spend allowed per day |
+| `CHAT_LIMIT_PER_MINUTE` / `CHAT_LIMIT_PER_HOUR` | `6` / `40` | Web version: chat messages per visitor |
+| `LIBRARIAN_PASSCODE` | *(empty)* | Web version: passcode for librarian sign-in; empty disables it |
+| `DOMAIN` | | Deployment: public domain served by Caddy |
 
 The model is fixed to Claude Sonnet 5.5 and cannot be changed in configuration.
 
@@ -270,10 +303,13 @@ src/main/java/libraryagent/
     tools/         AbstractTool (Template Method) and the agent's tools
   ui/cli/          command-line interface
   ui/gui/          JavaFX interface
+  ui/web/          web server, JSON API, sessions, rate limits
 src/main/resources/
   db/schema.sql          database schema
   seed/library.json      sample catalogue, members and loans
   prompts/system.txt     the agent's instructions
+  web/                   browser interface files
+deploy/            Caddyfile and deployment guide (with Dockerfile, docker-compose.yml at the root)
 src/test/java/...  JUnit tests, mirroring the main packages
 ```
 
