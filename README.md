@@ -6,7 +6,7 @@ An AI agent for a public library, written in Java 21 for the EECS 3311 course pr
 
 A request like this would normally mean several searches, availability checks and hold forms. The agent plans the steps itself: it searches the catalogue, checks which copies are free, reserves them, and summarises what it did. Every rule (borrowing limits, copy states, fees, hold queues) is enforced by ordinary Java code. The language model only chooses which tools to call.
 
-**Status:** Stage 2 (implementation) is in progress; submission is due Nov 10, 2026. All 14 features work end to end in the CLI, with the AI agent. The web server and its deployment setup are ready. The JavaFX GUI and the browser interface are being built in the final week. See [Feature status](#features) below.
+**Status:** Stage 2 (implementation) is complete; submission is due Nov 10, 2026. All 14 features work end to end in the CLI, the JavaFX GUI and the web version, with the AI agent. The week of Nov 3 is for testing, fixes and additional features. See [Feature status](#features) below.
 
 ---
 
@@ -32,22 +32,22 @@ The system specifies 14 features (F01–F14) in the Stage 1 design. ✅ works en
 
 | ID | Feature | Type | Status |
 |---|---|---|---|
-| F01 | Conversational registration with reading preferences | Hybrid | ✅ CLI (by chat or the `register` form) |
-| F02 | Natural-language catalogue search ("something like The Hobbit, not too long") | Hybrid | ✅ CLI |
-| F03 | Reading lists (create, add, remove, reorder) | Hybrid | ✅ CLI (commands and chat) |
-| F04 | Multi-book find and reserve in one request | Hybrid | ✅ CLI |
-| F05 | Hold queue with hold-ready notifications | Deterministic | ✅ CLI |
-| F06 | Checkout with borrowing limits (5 standard, 8 student) | Deterministic | ✅ CLI |
-| F07 | Book return with late fees (desk and self-service by chat) | Deterministic / hybrid | ✅ CLI |
-| F08 | Due dates, renewals, overdue detection and late fees | Deterministic | ✅ CLI |
-| F09 | Personalised recommendations and AI-curated reading lists | Hybrid | ✅ CLI |
-| F10 | Grounded book Q&A (answers only from the catalogue record) | AI | ✅ CLI |
-| F11 | Catalogue management with AI genre tagging | Hybrid | ✅ CLI |
-| F12 | Undo last action (from commands, menus or chat) | Deterministic | ✅ CLI |
-| F13 | Conversation memory ("reserve the second one") | AI | ✅ CLI |
-| F14 | Reading feedback tracking (liked / neutral / disliked) | Hybrid | ✅ CLI (`rate` command or saying so in chat) |
+| F01 | Conversational registration with reading preferences | Hybrid | ✅ CLI, GUI and web |
+| F02 | Natural-language catalogue search ("something like The Hobbit, not too long") | Hybrid | ✅ CLI, GUI and web |
+| F03 | Reading lists (create, add, remove, reorder) | Hybrid | ✅ CLI, GUI and web |
+| F04 | Multi-book find and reserve in one request | Hybrid | ✅ CLI, GUI and web |
+| F05 | Hold queue with hold-ready notifications | Deterministic | ✅ CLI, GUI and web |
+| F06 | Checkout with borrowing limits (5 standard, 8 student) | Deterministic | ✅ CLI, GUI and web |
+| F07 | Book return with late fees (desk and self-service by chat) | Deterministic / hybrid | ✅ CLI, GUI and web |
+| F08 | Due dates, renewals, overdue detection and late fees | Deterministic | ✅ CLI, GUI and web |
+| F09 | Personalised recommendations and AI-curated reading lists | Hybrid | ✅ CLI, GUI and web |
+| F10 | Grounded book Q&A (answers only from the catalogue record) | AI | ✅ CLI, GUI and web |
+| F11 | Catalogue management with AI genre tagging | Hybrid | ✅ CLI, GUI and web |
+| F12 | Undo last action (from commands, menus or chat) | Deterministic | ✅ CLI, GUI and web |
+| F13 | Conversation memory ("reserve the second one") | AI | ✅ CLI, GUI and web |
+| F14 | Reading feedback tracking (liked / neutral / disliked) | Hybrid | ✅ CLI, GUI and web |
 
-Every feature will also be available in the JavaFX GUI and the browser interface (in progress).
+Every feature is available from the CLI, the JavaFX GUI and the browser interface.
 
 ---
 
@@ -93,7 +93,7 @@ Design patterns used:
 | Facade | `controller/AgentController` | One entry point and one set of permission checks for both UIs |
 | Adapter | `agent/llm/ClaudeClient` | Wraps the Anthropic SDK behind the app's own `LLMClient` interface |
 | Decorator | `agent/llm/BudgetedLLMClient` | Adds a daily spending cap to any `LLMClient` (web version) |
-| MVC | JavaFX views → `AgentController` → services | (GUI, in progress) |
+| MVC | JavaFX views, the CLI and the browser interface → `AgentController` → services | Three interfaces share one controller and the same rules |
 
 **Tech stack:** Java 21, Gradle (wrapper included), JavaFX 21, SQLite (`sqlite-jdbc`), Jackson, Anthropic Java SDK 3.2.0, JUnit 6.
 
@@ -160,7 +160,15 @@ When the CLI exits, it prints the tokens the assistant used and an estimated cos
 ```powershell
 .\gradlew.bat run
 ```
-The GUI is still in development; at the moment it opens a status window.
+The start screen lets you sign in, register, browse as a guest, or sign up by chatting. After signing in you get:
+- **Chat:** talk to the assistant. Books in replies have Details and Reserve buttons.
+- **Catalog:** search by keywords, genre and length; book details; Reserve or Join hold queue; Add to list; Ask about this book; Recommended for you.
+- **Account:** loans (Renew), holds (Cancel), fees, reading lists (create, reorder, remove, Generate a list with AI), borrowing history with ratings, and the tracking switch.
+- **Librarian** (librarian accounts only): desk check-out and check-in, the overdue list, and Add a book with Suggest genres.
+
+The toolbar shows notices (hold ready, overdue) and has Undo and Sign out.
+
+GUI options: `.\gradlew.bat run --args="--member M001 --tab account"` signs in and opens a tab; `--reset-db` restores the sample data.
 
 The first launch takes a little longer while Gradle downloads dependencies and compiles.
 
@@ -244,7 +252,7 @@ The same application also runs as a web server with a JSON API, for hosting on a
   - per-visitor chat limits
   - message size limits
   - librarian sign-in only with `LIBRARIAN_PASSCODE`
-- The browser interface is in progress. Until then, `/` shows a placeholder and the API is under `/api/...` (for example `/api/health`).
+- Open `http://localhost:8080` for the browser interface. It has the same four tabs as the GUI. The JSON API is under `/api/...` (for example `/api/health`).
 
 To host it on a VPS with HTTPS on your own domain (Docker and Caddy), follow **[deploy/DEPLOY.md](deploy/DEPLOY.md)**.
 
