@@ -3,6 +3,7 @@ package libraryagent.agent.tools;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.Lock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import libraryagent.agent.AgentContext;
@@ -17,6 +18,19 @@ public class ToolManager {
 
     // Insertion order keeps the tool list identical between requests, so it stays cached.
     private final Map<String, Tool> tools = new LinkedHashMap<>();
+    private final Lock dataLock;
+
+    public ToolManager() {
+        this(null);
+    }
+
+    /**
+     * @param dataLock held while a tool runs, so concurrent sessions (web version) never touch
+     *                 library data at the same time; model calls stay outside the lock
+     */
+    public ToolManager(Lock dataLock) {
+        this.dataLock = dataLock;
+    }
 
     public void register(Tool tool) {
         if (tools.putIfAbsent(tool.name(), tool) != null) {
@@ -30,6 +44,9 @@ public class ToolManager {
         if (tool == null) {
             return ToolResult.error("There is no tool called \"" + call.toolName() + "\".");
         }
+        if (dataLock != null) {
+            dataLock.lock();
+        }
         try {
             return tool.execute(call.args(), context);
         } catch (LibraryException e) {
@@ -37,6 +54,10 @@ public class ToolManager {
         } catch (RuntimeException e) {
             LOG.log(Level.WARNING, "Tool " + call.toolName() + " failed", e);
             return ToolResult.error("The " + call.toolName() + " tool failed unexpectedly.");
+        } finally {
+            if (dataLock != null) {
+                dataLock.unlock();
+            }
         }
     }
 

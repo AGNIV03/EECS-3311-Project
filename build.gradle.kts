@@ -48,6 +48,14 @@ tasks.register<JavaExec>("runCli") {
     workingDir = rootDir
 }
 
+tasks.register<JavaExec>("runWeb") {
+    group = "application"
+    description = "Runs the web version (JSON API + browser interface)."
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass = "libraryagent.ui.web.WebServer"
+    workingDir = rootDir
+}
+
 tasks.named<JavaExec>("run") {
     workingDir = rootDir
 }

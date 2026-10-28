@@ -1,5 +1,6 @@
 package libraryagent.agent;
 
+import java.util.concurrent.locks.Lock;
 import libraryagent.agent.llm.LLMClient;
 import libraryagent.agent.tools.AccountSummaryTool;
 import libraryagent.agent.tools.CheckAvailabilityTool;
@@ -28,7 +29,15 @@ public final class AgentFactory {
     }
 
     public static Planner createPlanner(LibraryServices services, LLMClient llm, int maxSteps) {
-        ToolManager tools = new ToolManager();
+        return createPlanner(services, llm, maxSteps, null);
+    }
+
+    /**
+     * @param dataLock held while each tool runs (web version: many sessions share one library);
+     *                 null for single-user interfaces
+     */
+    public static Planner createPlanner(LibraryServices services, LLMClient llm, int maxSteps, Lock dataLock) {
+        ToolManager tools = new ToolManager(dataLock);
         tools.register(new SearchCatalogTool(services.catalog()));
         tools.register(new GetBookDetailsTool(services.catalog()));
         tools.register(new CheckAvailabilityTool(services.catalog(), services.circulation()));
