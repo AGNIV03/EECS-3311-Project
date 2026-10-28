@@ -26,6 +26,8 @@ dependencies {
     implementation("org.xerial:sqlite-jdbc:3.53.4.0")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.22.4")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.22.4")
+    // The SDK logs through SLF4J; a no-op binding keeps its startup warnings out of the CLI.
+    runtimeOnly("org.slf4j:slf4j-nop:2.0.20")
 
     testImplementation(platform("org.junit:junit-bom:6.1.3"))
     testImplementation("org.junit.jupiter:junit-jupiter")
