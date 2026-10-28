@@ -1,0 +1,53 @@
+.root {
+    -fx-font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    -fx-font-size: 13px;
+    -fx-background-color: #f6f7f9;
+}
+
+.toolbar {
+    -fx-background-color: #1f3a5f;
+    -fx-padding: 8 14 8 14;
+    -fx-spacing: 10;
+    -fx-alignment: center-left;
+}
+.toolbar .label { -fx-text-fill: white; }
+.toolbar .app-name { -fx-font-size: 16px; -fx-font-weight: bold; }
+.toolbar .button { -fx-background-color: #2f5585; -fx-text-fill: white; -fx-background-radius: 4; }
+.toolbar .button:hover { -fx-background-color: #3d6aa3; }
+.toolbar .notices-on { -fx-background-color: #d9822b; }
+
+.status-bar { -fx-background-color: #e9ecf1; -fx-padding: 5 12 5 12; }
+.status-bar .label { -fx-text-fill: #33415c; }
+
+.title { -fx-font-size: 30px; -fx-font-weight: bold; -fx-text-fill: #1f3a5f; }
+.heading { -fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #1f3a5f; }
+.muted { -fx-text-fill: #5b6475; }
+.error { -fx-text-fill: #b3261e; }
+.success { -fx-text-fill: #1e7a3a; }
+
+.card {
+    -fx-background-color: white;
+    -fx-background-radius: 8;
+    -fx-border-color: #dde2ea;
+    -fx-border-radius: 8;
+}
+
+.chat { -fx-background-color: #f6f7f9; }
+.bubble { -fx-padding: 9 12 9 12; -fx-background-radius: 12; -fx-font-size: 13.5px; }
+.bubble.user { -fx-background-color: #1f3a5f; -fx-text-fill: white; }
+.bubble.assistant { -fx-background-color: white; -fx-border-color: #dde2ea; -fx-border-radius: 12; }
+.bubble.thinking { -fx-background-color: #eef1f6; -fx-text-fill: #5b6475; -fx-font-style: italic; }
+.bubble.notice { -fx-background-color: #fff4e5; -fx-border-color: #f0c27b; -fx-border-radius: 12; }
+.bubble.error-bubble { -fx-background-color: #fdecea; -fx-text-fill: #b3261e; }
+
+.book-card {
+    -fx-background-color: white;
+    -fx-border-color: #c9d3e3;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 8 10 8 10;
+    -fx-max-width: 760;
+}
+
+.section { -fx-spacing: 8; -fx-padding: 14; }
+.table-view { -fx-pref-height: 170; }
