@@ -6,6 +6,7 @@ import libraryagent.notification.NotificationService;
 import libraryagent.persistence.DataStore;
 import libraryagent.service.CatalogService;
 import libraryagent.service.CirculationService;
+import libraryagent.service.FeedbackService;
 import libraryagent.service.MemberService;
 import libraryagent.service.ReadingListService;
 
@@ -19,6 +20,7 @@ public final class LibraryServices implements AutoCloseable {
     private final MemberService members;
     private final CirculationService circulation;
     private final ReadingListService readingLists;
+    private final FeedbackService feedback;
 
     private LibraryServices(DataStore store, Clock clock) {
         this.store = store;
@@ -28,6 +30,7 @@ public final class LibraryServices implements AutoCloseable {
         this.circulation = new CirculationService(store.books(), store.loans(), store.reservations(),
                 notifications, clock);
         this.readingLists = new ReadingListService(store.readingLists());
+        this.feedback = new FeedbackService(store.feedback(), store.members(), store.loans(), clock);
     }
 
     /** Opens (and seeds, if new) the database file. */
@@ -66,6 +69,10 @@ public final class LibraryServices implements AutoCloseable {
 
     public ReadingListService readingLists() {
         return readingLists;
+    }
+
+    public FeedbackService feedback() {
+        return feedback;
     }
 
     @Override

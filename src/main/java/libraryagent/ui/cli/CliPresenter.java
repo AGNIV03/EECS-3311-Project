@@ -117,6 +117,10 @@ final class CliPresenter {
               list remove "<name>" <isbn>   remove a book from a list
               list move "<name>" <isbn> <n> move a book to position n
               undo                          undo your last action
+              rate <isbn> liked|neutral|disliked [comment]
+                                            rate a book you borrowed
+              tracking on|off               turn reading-feedback tracking on or off
+              recommend                     books picked from your preferences and ratings
               help | exit
             Librarian commands:
               checkout <memberId> <copyId>  lend a copy

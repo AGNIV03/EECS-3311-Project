@@ -24,10 +24,12 @@ import libraryagent.controller.AgentController;
 import libraryagent.controller.LibraryServices;
 import libraryagent.controller.SessionContext;
 import libraryagent.domain.Book;
+import libraryagent.domain.BookFeedback;
 import libraryagent.domain.LibraryException;
 import libraryagent.domain.Loan;
 import libraryagent.domain.Member;
 import libraryagent.domain.MemberType;
+import libraryagent.domain.Rating;
 import libraryagent.domain.ReadingList;
 
 /**
@@ -140,6 +142,9 @@ public class CliApp {
                 case "list" -> list(action);
                 case "addbook" -> addBook();
                 case "undo" -> out.println(controller.undoLast());
+                case "rate" -> rate(action);
+                case "tracking" -> tracking(action);
+                case "recommend" -> recommend();
                 case "chat" -> chat(action.arg(0));
                 default -> out.println("Unknown command. Type 'help'.");
             }
@@ -222,8 +227,41 @@ public class CliApp {
             out.println("You have not borrowed any books yet.");
             return;
         }
+        String memberId = currentMemberId();
         loans.forEach(l -> out.println("  " + l.getCheckoutDate() + " | " + l.getBook().getTitle() + " ("
-                + l.getBook().getIsbn() + ") | " + (l.isOpen() ? "on loan" : "returned " + l.getReturnDate())));
+                + l.getBook().getIsbn() + ") | " + (l.isOpen() ? "on loan" : "returned " + l.getReturnDate())
+                + controller.ratingFor(memberId, l.getBook().getIsbn())
+                        .map(f -> " | you rated it " + f.getRating().name().toLowerCase()).orElse("")));
+    }
+
+    private void rate(CliAction action) {
+        String usage = "rate <isbn> liked|neutral|disliked [comment]";
+        String isbn = require(action, 0, usage);
+        Rating rating = Rating.parse(require(action, 1, usage));
+        String comment = action.rest(2);
+        BookFeedback saved = controller.rateBook(currentMemberId(), isbn, rating, comment == null ? "" : comment);
+        out.println("Saved: you " + saved.getRating().name().toLowerCase() + " \"" + saved.getBook().getTitle()
+                + "\".");
+    }
+
+    private void tracking(CliAction action) {
+        boolean on = require(action, 0, "tracking on|off").equalsIgnoreCase("on");
+        controller.setTracking(currentMemberId(), on);
+        out.println(on ? "Reading feedback tracking is on. Your ratings will shape recommendations."
+                : "Reading feedback tracking is off. Ratings won't be saved; recommendations use your stated "
+                        + "preferences only.");
+    }
+
+    private void recommend() {
+        List<Book> books = controller.recommendations(currentMemberId(), 5);
+        if (books.isEmpty()) {
+            out.println("No recommendations yet. Tell the assistant what you like, or rate books you've borrowed.");
+            return;
+        }
+        out.println("Recommended for you:");
+        for (int i = 0; i < books.size(); i++) {
+            out.println(CliPresenter.bookLine(i + 1, books.get(i), controller.availability(books.get(i))));
+        }
     }
 
     private void lists() {

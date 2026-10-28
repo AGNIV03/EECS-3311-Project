@@ -7,6 +7,7 @@ import java.util.Locale;
 import java.util.Optional;
 import libraryagent.domain.Book;
 import libraryagent.domain.LibraryException;
+import libraryagent.domain.Member;
 import libraryagent.domain.copy.BookCopy;
 import libraryagent.domain.genre.GenreComponent;
 import libraryagent.domain.genre.Subgenre;
@@ -107,6 +108,46 @@ public class CatalogService {
     public void assignGenre(Book book, String subgenre) {
         requireSubgenre(subgenre).addBook(book);
         books.save(book);
+    }
+
+    /**
+     * Real catalogue books that fit the member's taste profile, best first. Books matching a liked
+     * genre or author score higher; available books break ties. Borrowed and disliked books are
+     * never returned, and books longer than the preferred maximum are skipped. Returns an empty
+     * list when the profile has nothing to go on.
+     */
+    public List<Book> recommendCandidates(Member member, TasteProfile profile, int n) {
+        if (profile.isEmpty()) {
+            return List.of();
+        }
+        record Scored(Book book, int score) {
+        }
+        List<Scored> scored = new ArrayList<>();
+        for (Book book : books.findAll()) {
+            if (profile.excludedIsbns().contains(book.getIsbn())
+                    || (profile.maxPages() > 0 && book.getPageCount() > profile.maxPages())) {
+                continue;
+            }
+            int score = 0;
+            for (String genre : profile.likedGenres()) {
+                if (genres.find(genre).map(g -> g.contains(book)).orElse(false)) {
+                    score += 3;
+                }
+            }
+            for (String author : profile.likedAuthors()) {
+                if (containsIgnoreCase(book.getAuthor(), author)) {
+                    score += 4;
+                }
+            }
+            if (score > 0) {
+                scored.add(new Scored(book, score + (book.availableCopies().isEmpty() ? 0 : 1)));
+            }
+        }
+        return scored.stream()
+                .sorted(Comparator.comparingInt(Scored::score).reversed().thenComparing(s -> s.book().getTitle()))
+                .limit(Math.max(0, n))
+                .map(Scored::book)
+                .toList();
     }
 
     /** Names of all subgenres books can be filed under. */

@@ -15,10 +15,12 @@ import libraryagent.command.RenewLoanCommand;
 import libraryagent.command.ReserveBookCommand;
 import libraryagent.command.ReturnBookCommand;
 import libraryagent.domain.Book;
+import libraryagent.domain.BookFeedback;
 import libraryagent.domain.LibraryException;
 import libraryagent.domain.Loan;
 import libraryagent.domain.Member;
 import libraryagent.domain.MemberType;
+import libraryagent.domain.Rating;
 import libraryagent.domain.ReadingList;
 import libraryagent.domain.ReadingPreferences;
 import libraryagent.domain.Reservation;
@@ -215,6 +217,31 @@ public class AgentController {
     /** Every loan the member has had, most recent first. */
     public List<Loan> loanHistory(String memberId) {
         return services.circulation().loanHistory(requireSelfOrLibrarian(memberId));
+    }
+
+    // ---- Feedback and recommendations ----------------------------------------------------
+
+    /** Records whether the member liked a book they borrowed (replaces an earlier rating). */
+    public BookFeedback rateBook(String memberId, String isbn, Rating rating, String comment) {
+        Member member = requireSelfOrLibrarian(memberId);
+        return services.feedback().recordFeedback(member, services.catalog().requireBook(isbn), rating, comment);
+    }
+
+    /** Turns reading-feedback tracking on or off for the member. */
+    public void setTracking(String memberId, boolean on) {
+        services.feedback().setTracking(requireSelfOrLibrarian(memberId), on);
+    }
+
+    /** The member's rating for a book, if they gave one. */
+    public Optional<BookFeedback> ratingFor(String memberId, String isbn) {
+        Member member = requireSelfOrLibrarian(memberId);
+        return services.feedback().feedbackFor(member, services.catalog().requireBook(isbn));
+    }
+
+    /** Books that fit the member's preferences and ratings (no AI involved). */
+    public List<Book> recommendations(String memberId, int count) {
+        Member member = requireSelfOrLibrarian(memberId);
+        return services.catalog().recommendCandidates(member, services.feedback().tasteProfile(member), count);
     }
 
     // ---- Reading lists (for the logged-in member) ----------------------------------------

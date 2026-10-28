@@ -3,6 +3,9 @@ package libraryagent.agent;
 import libraryagent.agent.llm.LLMClient;
 import libraryagent.agent.tools.AccountSummaryTool;
 import libraryagent.agent.tools.CheckAvailabilityTool;
+import libraryagent.agent.tools.CreateCuratedListTool;
+import libraryagent.agent.tools.RecommendBooksTool;
+import libraryagent.agent.tools.RecordFeedbackTool;
 import libraryagent.agent.tools.GetBookDetailsTool;
 import libraryagent.agent.tools.ManageReadingListTool;
 import libraryagent.agent.tools.RegisterMemberTool;
@@ -31,6 +34,9 @@ public final class AgentFactory {
         tools.register(new AccountSummaryTool(services.circulation(), services.readingLists()));
         tools.register(new RegisterMemberTool(services.members()));
         tools.register(new ManageReadingListTool(services.readingLists(), services.catalog()));
+        tools.register(new RecordFeedbackTool(services.feedback(), services.catalog()));
+        tools.register(new RecommendBooksTool(services.feedback(), services.catalog()));
+        tools.register(new CreateCuratedListTool(services.readingLists(), services.feedback(), services.catalog()));
         tools.register(new UndoLastActionTool());
         return new Planner(llm, tools, new PromptComposer(services.clock()), new MemoryManager(), maxSteps);
     }

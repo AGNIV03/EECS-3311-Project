@@ -23,6 +23,8 @@ public class CliCommandParser {
     private static final Pattern RESERVATION_ID = Pattern.compile("(?i)r\\d+");
     private static final Pattern LIST_ACTION = Pattern.compile("(?i)create|show|add|remove|move");
     private static final Pattern NUMBER = Pattern.compile("-?\\d+");
+    private static final Pattern RATING = Pattern.compile("(?i)liked|neutral|disliked");
+    private static final Pattern ON_OFF = Pattern.compile("(?i)on|off");
 
     /** Most arguments a command takes, and the pattern each argument must match. */
     private record Shape(int maxArgs, List<Pattern> patterns) {
@@ -62,6 +64,9 @@ public class CliCommandParser {
             Map.entry("register", Shape.none()),
             Map.entry("addbook", Shape.none()),
             Map.entry("undo", Shape.none()),
+            Map.entry("recommend", Shape.none()),
+            Map.entry("tracking", Shape.of(ON_OFF)),
+            Map.entry("rate", new Shape(Integer.MAX_VALUE, List.of(ISBN, RATING))),
             Map.entry("login", Shape.of(MEMBER_ID)),
             Map.entry("search", new Shape(Integer.MAX_VALUE, List.of())),
             Map.entry("book", Shape.of(ISBN)),
