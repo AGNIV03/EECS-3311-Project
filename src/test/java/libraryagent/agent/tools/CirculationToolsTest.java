@@ -102,7 +102,7 @@ class CirculationToolsTest {
                 notMine.error());
 
         ToolResult mine = tool.execute(Map.of("isbn", DUNE), as("M001"));
-        assertEquals("2.25", ((Map<?, ?>) mine.data()).get("lateFee"));
+        assertEquals("$2.25", ((Map<?, ?>) mine.data()).get("lateFee"));
         assertTrue(services.circulation().loansFor(services.members().requireMember("M001")).isEmpty());
     }
 
@@ -121,7 +121,7 @@ class CirculationToolsTest {
         ToolResult result = new AccountSummaryTool(services.circulation(), services.readingLists())
                 .execute(Map.of(), as("M001"));
         Map<?, ?> data = (Map<?, ?>) result.data();
-        assertEquals("2.25", data.get("feesOwed"));
+        assertEquals("$2.25", data.get("feesOwed"));
         Map<?, ?> loan = (Map<?, ?>) ((List<?>) data.get("loans")).get(0);
         assertEquals("Dune", loan.get("title"));
         assertEquals(true, loan.get("overdue"));

@@ -61,7 +61,7 @@ public class ReturnBookTool extends AbstractTool {
         }
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("returned", loan.getBook().getTitle());
-        data.put("lateFee", loan.getFee().toPlainString());
+        data.put("lateFee", ToolViews.money(loan.getFee()));
         data.put("message", result.message());
         return ToolResult.ok(data, List.of(loan.getBook()));
     }

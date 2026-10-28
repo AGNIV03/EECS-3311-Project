@@ -1,5 +1,7 @@
 package libraryagent.agent.tools;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import libraryagent.domain.Book;
@@ -9,6 +11,11 @@ import libraryagent.service.Availability;
 final class ToolViews {
 
     private ToolViews() {
+    }
+
+    /** A money amount with its currency, e.g. "$2.25", so the model never guesses the currency. */
+    static String money(BigDecimal amount) {
+        return "$" + amount.setScale(2, RoundingMode.HALF_UP).toPlainString();
     }
 
     static Map<String, Object> bookSummary(Book book, Availability availability) {

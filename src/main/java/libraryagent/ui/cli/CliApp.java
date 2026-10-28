@@ -1,6 +1,8 @@
 package libraryagent.ui.cli;
 
 import java.io.BufferedReader;
+import java.io.FileDescriptor;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
@@ -55,14 +57,15 @@ public class CliApp {
             Files.deleteIfExists(config.dbPath());
         }
         BufferedReader in = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
+        PrintStream out = new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
         try (LibraryServices services = LibraryServices.open(config.dbPath(), Clock.systemDefaultZone())) {
             Planner planner = config.apiKey()
                     .map(key -> AgentFactory.createPlanner(services, new ClaudeClient(key, config.effort()),
                             config.maxSteps()))
                     .orElse(null);
             AgentController controller = new AgentController(services, new SessionContext(), planner);
-            controller.subscribe(new CliNotifier(System.out, controller));
-            CliApp app = new CliApp(in, System.out, controller, controller.assistantAvailable());
+            controller.subscribe(new CliNotifier(out, controller));
+            CliApp app = new CliApp(in, out, controller, controller.assistantAvailable());
             int memberFlag = options.indexOf("--member");
             if (memberFlag >= 0 && memberFlag + 1 < options.size()) {
                 app.dispatch(new CliAction("login", List.of(options.get(memberFlag + 1))));

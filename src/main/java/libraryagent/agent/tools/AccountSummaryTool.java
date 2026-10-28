@@ -62,7 +62,7 @@ public class AccountSummaryTool extends AbstractTool {
             view.put("dueDate", loan.getDueDate());
             view.put("overdue", loan.isOverdue(today));
             view.put("renewalsUsed", loan.getRenewals() + " of " + Loan.MAX_RENEWALS);
-            view.put("feeSoFar", loan.calculateFee(member.getType().feePolicy(), today).toPlainString());
+            view.put("feeSoFar", ToolViews.money(loan.calculateFee(member.getType().feePolicy(), today)));
             loans.add(view);
         }
         List<Map<String, Object>> holds = new ArrayList<>();
@@ -86,7 +86,7 @@ public class AccountSummaryTool extends AbstractTool {
         data.put("borrowLimit", member.getBorrowLimit());
         data.put("loans", loans);
         data.put("holds", holds);
-        data.put("feesOwed", circulation.feesOwed(member).toPlainString());
+        data.put("feesOwed", ToolViews.money(circulation.feesOwed(member)));
         data.put("readingLists", readingLists.listsFor(member).stream()
                 .map(l -> l.getName() + " (" + l.getBooks().size() + " books)").toList());
         data.put("favouriteGenres", member.getPreferences().getFavoriteGenres());
