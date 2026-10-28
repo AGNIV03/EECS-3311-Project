@@ -80,6 +80,16 @@ final class Gui {
         return label;
     }
 
+    /** A read-only text column. */
+    static <T> javafx.scene.control.TableColumn<T, String> column(String title,
+            java.util.function.Function<T, String> value, double width) {
+        javafx.scene.control.TableColumn<T, String> column = new javafx.scene.control.TableColumn<>(title);
+        column.setCellValueFactory(cell -> new javafx.beans.property.ReadOnlyStringWrapper(
+                value.apply(cell.getValue())));
+        column.setPrefWidth(width);
+        return column;
+    }
+
     static Region spacer() {
         Region region = new Region();
         javafx.scene.layout.HBox.setHgrow(region, Priority.ALWAYS);

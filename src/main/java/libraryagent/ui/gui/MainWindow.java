@@ -2,9 +2,7 @@ package libraryagent.ui.gui;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 import javafx.application.Platform;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Tab;
@@ -19,7 +17,6 @@ import libraryagent.domain.Member;
 import libraryagent.notification.EventType;
 import libraryagent.notification.LibraryEvent;
 import libraryagent.notification.LibraryEventListener;
-import libraryagent.service.Availability;
 
 /**
  * The main window (MVC view root): toolbar with the signed-in member, notices and Undo; the start
@@ -37,15 +34,19 @@ final class MainWindow extends BorderPane implements LibraryEventListener {
     private final List<String> pendingNotices = new ArrayList<>();
     private final TabPane tabs = new TabPane();
     private final Tab chatTab = new Tab("Chat");
+    private final Tab catalogTab = new Tab("Catalog");
     private final ChatView chat;
+    private final CatalogView catalog;
     private final StartView start;
 
     MainWindow(AgentController controller, Gui gui) {
         this.controller = controller;
         this.gui = gui;
         this.chat = new ChatView(controller, gui, this);
+        this.catalog = new CatalogView(controller, gui, this);
         this.start = new StartView(controller, gui, this);
         chatTab.setContent(chat);
+        catalogTab.setContent(catalog);
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
         Label name = new Label("📚 Library Agent");
@@ -74,9 +75,9 @@ final class MainWindow extends BorderPane implements LibraryEventListener {
 
     /** Shows the tabs that fit the current user (guests: Chat and Catalog). */
     void showMain() {
-        tabs.getTabs().setAll(chatTab);
+        tabs.getTabs().setAll(chatTab, catalogTab);
         setCenter(tabs);
-        updateHeader();
+        refreshAll();
     }
 
     void onSignedIn(Member member) {
@@ -111,6 +112,7 @@ final class MainWindow extends BorderPane implements LibraryEventListener {
     /** Reloads the data shown in every tab after something changed. */
     void refreshAll() {
         updateHeader();
+        catalog.refresh();
     }
 
     // ---- Shared actions ------------------------------------------------------------------
@@ -126,21 +128,11 @@ final class MainWindow extends BorderPane implements LibraryEventListener {
         refreshAll();
     }
 
+    /** Opens a book in the Catalog tab. */
     void showBook(String isbn) {
         try {
-            Book book = gui.data(() -> controller.bookDetails(isbn));
-            Availability a = gui.data(() -> controller.availability(book));
-            String copies = book.getCopies().stream()
-                    .map(c -> c.getCopyId() + " (" + c.getState().name() + ")")
-                    .collect(Collectors.joining(", "));
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle(book.getTitle());
-            alert.setHeaderText(book.getTitle() + " by " + book.getAuthor());
-            alert.setContentText(book.getDescription() + "\n\n" + book.getPageCount() + " pages · "
-                    + String.join(", ", book.getGenres()) + "\nISBN " + book.getIsbn()
-                    + "\nCopies: " + copies + "\n" + a.availableCopies() + " of " + a.totalCopies()
-                    + " available, " + a.queueLength() + " waiting");
-            alert.show();
+            tabs.getSelectionModel().select(catalogTab);
+            catalog.select(isbn);
         } catch (LibraryException e) {
             setStatus(e.getMessage());
         }

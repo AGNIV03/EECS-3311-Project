@@ -141,6 +141,16 @@ public class AgentController {
         return services.catalog().subgenreNames();
     }
 
+    /** Every genre name, categories first (e.g. "Fiction") followed by their subgenres. */
+    public List<String> genreNames() {
+        List<String> names = new java.util.ArrayList<>();
+        for (var category : services.catalog().genreTree().getChildren()) {
+            names.add(category.getName());
+            names.addAll(category.subgenreNames());
+        }
+        return names;
+    }
+
     /**
      * Librarians only: AI-suggested subgenres for a book being added. When the AI is off or
      * unreachable, the reason is returned as an error so the librarian picks genres by hand.
