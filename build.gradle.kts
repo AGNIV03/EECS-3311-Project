@@ -22,6 +22,7 @@ javafx {
 }
 
 dependencies {
+    implementation("com.anthropic:anthropic-java:3.2.0")
     implementation("org.xerial:sqlite-jdbc:3.53.4.0")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.22.4")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.22.4")
@@ -50,7 +51,10 @@ tasks.named<JavaExec>("run") {
 }
 
 tasks.test {
-    useJUnitPlatform()
+    // Tests tagged "live" call the real Anthropic API (and cost money); run them with `gradlew liveTest`.
+    useJUnitPlatform {
+        excludeTags("live")
+    }
     testLogging {
         events("failed")
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
@@ -60,4 +64,19 @@ tasks.test {
 tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
     options.compilerArgs.add("-Xlint:unchecked")
+}
+
+tasks.register<Test>("liveTest") {
+    group = "verification"
+    description = "Runs tests that call the real Anthropic API (needs ANTHROPIC_API_KEY in .env)."
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    workingDir = rootDir
+    useJUnitPlatform {
+        includeTags("live")
+    }
+    testLogging {
+        events("passed", "failed")
+        showStandardStreams = true
+    }
 }
