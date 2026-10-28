@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.List;
 import libraryagent.agent.AgentFactory;
 import libraryagent.agent.AgentResponse;
+import libraryagent.agent.GenreTagger;
 import libraryagent.agent.Planner;
 import libraryagent.agent.ToolTrace;
 import libraryagent.agent.llm.ClaudeClient;
@@ -69,11 +70,10 @@ public class CliApp {
         BufferedReader in = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
         PrintStream out = new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
         try (LibraryServices services = LibraryServices.open(config.dbPath(), Clock.systemDefaultZone())) {
-            Planner planner = config.apiKey()
-                    .map(key -> AgentFactory.createPlanner(services, new ClaudeClient(key, config.effort()),
-                            config.maxSteps()))
-                    .orElse(null);
-            AgentController controller = new AgentController(services, new SessionContext(), planner);
+            ClaudeClient llm = config.apiKey().map(key -> new ClaudeClient(key, config.effort())).orElse(null);
+            Planner planner = llm == null ? null : AgentFactory.createPlanner(services, llm, config.maxSteps());
+            GenreTagger tagger = llm == null ? null : AgentFactory.createTagger(services, llm);
+            AgentController controller = new AgentController(services, new SessionContext(), planner, tagger);
             controller.subscribe(new CliNotifier(out, controller));
             CliApp app = new CliApp(in, out, controller, controller.assistantAvailable());
             app.setVerbose(options.contains("--verbose"));
@@ -298,9 +298,25 @@ public class CliApp {
         int pages = parseInt(ask("Pages: "), "Pages must be a number.");
         String description = ask("Description: ");
         int copies = parseInt(ask("Number of copies: "), "Number of copies must be a number.");
+        Book draft = new Book(isbn, title, author, pages, description);
+        List<String> suggested = List.of();
+        if (llmEnabled) {
+            out.println("(asking the assistant for genre suggestions...)");
+            try {
+                suggested = controller.suggestGenres(draft);
+            } catch (LibraryException e) {
+                out.println(e.getMessage());
+            }
+        }
         out.println("Subgenres: " + String.join(", ", controller.subgenres()));
-        List<String> genres = splitList(ask("Subgenres, comma-separated: "));
-        Book added = controller.addBook(new Book(isbn, title, author, pages, description), copies, genres);
+        String prompt = "Subgenres, comma-separated: ";
+        if (!suggested.isEmpty()) {
+            out.println("Suggested: " + String.join(", ", suggested));
+            prompt = "Subgenres, comma-separated (press Enter to accept the suggestion): ";
+        }
+        String answer = ask(prompt);
+        List<String> genres = answer.isBlank() ? suggested : splitList(answer);
+        Book added = controller.addBook(draft, copies, genres);
         out.println("Added \"" + added.getTitle() + "\" with " + added.getCopies().size() + " copies, filed under "
                 + String.join(", ", added.getGenres()) + ".");
     }

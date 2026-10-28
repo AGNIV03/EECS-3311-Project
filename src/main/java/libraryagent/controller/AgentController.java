@@ -4,7 +4,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
 import libraryagent.agent.AgentResponse;
+import libraryagent.agent.GenreTagger;
 import libraryagent.agent.Planner;
+import libraryagent.agent.llm.LlmException;
 import libraryagent.agent.llm.TokenUsage;
 import libraryagent.command.AddToReadingListCommand;
 import libraryagent.command.CheckOutCommand;
@@ -39,16 +41,22 @@ public class AgentController {
     private final LibraryServices services;
     private final SessionContext session;
     private final Planner planner;
+    private final GenreTagger tagger;
 
     /** A controller without the AI assistant (no API key configured). */
     public AgentController(LibraryServices services, SessionContext session) {
-        this(services, session, null);
+        this(services, session, null, null);
     }
 
     public AgentController(LibraryServices services, SessionContext session, Planner planner) {
+        this(services, session, planner, null);
+    }
+
+    public AgentController(LibraryServices services, SessionContext session, Planner planner, GenreTagger tagger) {
         this.services = services;
         this.session = session;
         this.planner = planner;
+        this.tagger = tagger;
     }
 
     // ---- AI assistant --------------------------------------------------------------------
@@ -131,6 +139,23 @@ public class AgentController {
 
     public List<String> subgenres() {
         return services.catalog().subgenreNames();
+    }
+
+    /**
+     * Librarians only: AI-suggested subgenres for a book being added. When the AI is off or
+     * unreachable, the reason is returned as an error so the librarian picks genres by hand.
+     */
+    public List<String> suggestGenres(Book book) {
+        requireLibrarian("add books");
+        if (tagger == null) {
+            throw new LibraryException("AI genre suggestions are turned off (no API key configured). "
+                    + "Choose the subgenres yourself.");
+        }
+        try {
+            return tagger.suggestGenres(book);
+        } catch (LlmException e) {
+            throw new LibraryException("AI genre suggestions are unavailable: " + e.getMessage());
+        }
     }
 
     /** Librarians only: adds a new title with copies, filed under the given subgenres. */

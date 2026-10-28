@@ -23,6 +23,10 @@ public final class AgentFactory {
     private AgentFactory() {
     }
 
+    public static GenreTagger createTagger(LibraryServices services, LLMClient llm) {
+        return new GenreTagger(llm, new PromptComposer(services.clock()), services.catalog());
+    }
+
     public static Planner createPlanner(LibraryServices services, LLMClient llm, int maxSteps) {
         ToolManager tools = new ToolManager();
         tools.register(new SearchCatalogTool(services.catalog()));
