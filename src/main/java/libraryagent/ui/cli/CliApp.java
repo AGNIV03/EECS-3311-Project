@@ -14,7 +14,9 @@ import java.util.List;
 import libraryagent.agent.AgentFactory;
 import libraryagent.agent.AgentResponse;
 import libraryagent.agent.Planner;
+import libraryagent.agent.ToolTrace;
 import libraryagent.agent.llm.ClaudeClient;
+import libraryagent.agent.llm.TokenUsage;
 import libraryagent.command.CommandResult;
 import libraryagent.config.AppConfig;
 import libraryagent.controller.AccountSummary;
@@ -42,12 +44,18 @@ public class CliApp {
     private final AgentController controller;
     private final boolean llmEnabled;
     private final CliCommandParser parser = new CliCommandParser();
+    private boolean verbose;
 
     public CliApp(BufferedReader in, PrintStream out, AgentController controller, boolean llmEnabled) {
         this.in = in;
         this.out = out;
         this.controller = controller;
         this.llmEnabled = llmEnabled;
+    }
+
+    /** When on, each tool the assistant calls is printed with its arguments and outcome. */
+    public void setVerbose(boolean verbose) {
+        this.verbose = verbose;
     }
 
     public static void main(String[] args) throws IOException {
@@ -66,6 +74,7 @@ public class CliApp {
             AgentController controller = new AgentController(services, new SessionContext(), planner);
             controller.subscribe(new CliNotifier(out, controller));
             CliApp app = new CliApp(in, out, controller, controller.assistantAvailable());
+            app.setVerbose(options.contains("--verbose"));
             int memberFlag = options.indexOf("--member");
             if (memberFlag >= 0 && memberFlag + 1 < options.size()) {
                 app.dispatch(new CliAction("login", List.of(options.get(memberFlag + 1))));
@@ -91,6 +100,12 @@ public class CliApp {
                 break;
             }
             dispatch(action);
+        }
+        TokenUsage usage = controller.assistantUsage();
+        if (usage.inputTokens() + usage.outputTokens() > 0) {
+            out.println("AI usage this session: " + usage.inputTokens() + " input tokens ("
+                    + usage.cacheReadTokens() + " read from cache, " + usage.cacheWriteTokens() + " written to cache), "
+                    + usage.outputTokens() + " output tokens, about $" + usage.estimatedCostUsd().toPlainString() + ".");
         }
         out.println("Goodbye.");
     }
@@ -260,6 +275,12 @@ public class CliApp {
         out.println("(thinking...)");
         out.flush();
         AgentResponse response = controller.chat(text);
+        if (verbose) {
+            for (ToolTrace call : response.trace()) {
+                out.println("  [tool] " + call.tool() + " " + call.args()
+                        + (call.success() ? " -> ok" : " -> error: " + call.error()));
+            }
+        }
         out.println(response.text());
         for (int i = 0; i < response.books().size(); i++) {
             Book book = response.books().get(i);

@@ -116,7 +116,7 @@ class PlannerTest {
         llm.reply(toolCalls(call("a", "lookup", Map.of("q", "fail")), call("b", "nope", Map.of())))
                 .reply(text("Sorry, that isn't allowed."));
         ask("do something");
-        List<MessagePart> parts = llm.requests().get(1).messages().get(2).parts();
+        List<MessagePart> parts = llm.requests().get(1).messages().get(3).parts();
         MessagePart.ToolResult denied = (MessagePart.ToolResult) parts.get(0);
         MessagePart.ToolResult unknown = (MessagePart.ToolResult) parts.get(1);
         assertTrue(denied.isError());
@@ -147,10 +147,10 @@ class PlannerTest {
         ask("reserve the second one");
 
         LlmRequest third = llm.requests().get(2);
-        Message lastUser = third.messages().get(third.messages().size() - 1);
+        Message lastUser = third.messages().get(third.messages().size() - 2);
         assertTrue(lastUser.text().startsWith("reserve the second one\n\n[Books shown in my previous answer]"));
         assertTrue(lastUser.text().contains("2. Dune by Frank Herbert (ISBN 9781000000006)"));
-        assertEquals(5, third.messages().size(), "history of turn 1 (4 messages) plus the new message");
+        assertEquals(7, third.messages().size(), "turn 1 (5 messages) plus the new message and session note");
     }
 
     @Test
@@ -175,19 +175,82 @@ class PlannerTest {
     }
 
     @Test
+    void identicalFailingCallsAreStoppedAfterTwoFailures() {
+        for (int i = 0; i < 3; i++) {
+            llm.reply(toolCalls(call("t" + i, "lookup", Map.of("q", "fail"))));
+        }
+        llm.reply(text("Sorry, I couldn't do that."));
+        AgentResponse response = ask("keep failing");
+        assertEquals("Sorry, I couldn't do that.", response.text());
+        assertEquals(Planner.REPEATED_FAILURE_TEXT, response.trace().get(2).error());
+        assertEquals("That is not allowed.", response.trace().get(1).error());
+    }
+
+    @Test
     void refusalGetsAPoliteAnswer() {
         llm.reply(FakeLLMClient.refusal());
         assertEquals(ResponseParser.REFUSAL_TEXT, ask("something unsafe").text());
     }
 
     @Test
-    void systemPromptNamesTheMemberAndDate() {
-        llm.reply(text("ok"));
+    void systemPromptIsStaticAndSessionDetailsArriveAsANote() {
+        llm.reply(text("ok")).reply(text("ok again"));
         ask("hi");
-        String system = llm.requests().get(0).system();
-        assertTrue(system.contains("Current user: Alex Morgan (member ID M001, standard member)"));
-        assertTrue(system.contains("Today's date: 2026-10-28"));
-        assertEquals("lookup", llm.requests().get(0).tools().get(0).name());
+        ask("hello");
+        LlmRequest first = llm.requests().get(0);
+        assertEquals(first.system(), llm.requests().get(1).system(), "system prompt must never change");
+        assertTrue(first.system().contains("Session details (who is logged in, today's date) arrive as system notes"));
+        Message note = first.messages().get(1);
+        assertEquals(Message.Role.SYSTEM, note.role());
+        assertEquals("Session: The user is Alex Morgan (member ID M001, standard member). Today's date: 2026-10-28.",
+                note.text());
+        assertEquals("lookup", first.tools().get(0).name());
+    }
+
+    @Test
+    void loginDuringATurnAddsANewSessionNote() {
+        ToolManager tools = new ToolManager();
+        tools.register(new Tool() {
+            @Override
+            public String name() {
+                return "signIn";
+            }
+
+            @Override
+            public ToolSpec spec() {
+                return new ToolSpec("signIn", "Test tool", Map.of(), List.of());
+            }
+
+            @Override
+            public ToolResult execute(Map<String, Object> args, AgentContext context) {
+                context.login(alex);
+                return ToolResult.ok(Map.of("memberId", "M001"));
+            }
+        });
+        List<Member> logins = new java.util.ArrayList<>();
+        Planner guestPlanner = new Planner(llm, tools, new PromptComposer(CLOCK), memory, 4);
+        llm.reply(toolCalls(call("t1", "signIn", Map.of()))).reply(text("Welcome!"));
+
+        guestPlanner.run(SESSION, null, CommandHistory::new, logins::add, "sign me up");
+
+        assertEquals(List.of(alex), logins);
+        List<Message> sent = llm.requests().get(1).messages();
+        assertEquals("Session: The user is not logged in. Today's date: 2026-10-28.", sent.get(1).text());
+        Message last = sent.get(sent.size() - 1);
+        assertEquals(Message.Role.SYSTEM, last.role());
+        assertTrue(last.text().startsWith("Session: The user is Alex Morgan"));
+    }
+
+    @Test
+    void failureAfterToolsRanSavesTheTurnWithANote() {
+        llm.reply(toolCalls(call("t1", "lookup", Map.of("q", "x"))))
+                .fail(new LlmException(LlmException.Kind.UNAVAILABLE, "Service down.", null));
+        AgentResponse response = ask("find");
+        assertTrue(response.error());
+        assertEquals(1, response.trace().size());
+        List<Message> history = memory.history(SESSION);
+        assertEquals(Message.Role.ASSISTANT, history.get(history.size() - 1).role());
+        assertTrue(history.get(history.size() - 1).text().contains("Service down."));
     }
 
     @Test
@@ -196,7 +259,7 @@ class PlannerTest {
         ask("find");
         planner.resetConversation(SESSION);
         ask("hello again");
-        assertEquals(1, llm.requests().get(2).messages().size());
+        assertEquals(2, llm.requests().get(2).messages().size());
         assertEquals("hello again", llm.requests().get(2).messages().get(0).text());
     }
 }

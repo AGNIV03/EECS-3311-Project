@@ -83,6 +83,7 @@ public class ClaudeClient implements LLMClient {
     }
 
     /** Tokens used by every request this client has made. */
+    @Override
     public synchronized TokenUsage totalUsage() {
         return totalUsage;
     }
@@ -129,6 +130,9 @@ public class ClaudeClient implements LLMClient {
         if (message.providerMessage() instanceof MessageParam original) {
             // The model's own turn, replayed exactly as received (reasoning blocks included).
             return original;
+        }
+        if (message.role() == Message.Role.SYSTEM) {
+            return MessageParam.ofSystem(message.text());
         }
         List<ContentBlockParam> blocks = new ArrayList<>();
         for (MessagePart part : message.parts()) {

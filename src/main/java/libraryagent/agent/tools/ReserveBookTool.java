@@ -44,8 +44,9 @@ public class ReserveBookTool extends AbstractTool {
                 properties(
                         "isbn", stringProperty("ISBN of the book to reserve."),
                         "joinQueue", Map.of("type", "boolean",
-                                "description", "Join the hold queue if no copy is free (only with the user's consent).")),
-                List.of("isbn"));
+                                "description", "true only if the user agreed to wait in the hold queue when no copy "
+                                        + "is free; otherwise false.")),
+                List.of("isbn", "joinQueue"));
     }
 
     @Override

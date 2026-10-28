@@ -8,4 +8,9 @@ public interface LLMClient {
 
     /** Sends one request and returns the model's reply; throws {@link LlmException} on failure. */
     LlmResponse complete(LlmRequest request);
+
+    /** Tokens used by every request so far (zero for clients that don't track usage). */
+    default TokenUsage totalUsage() {
+        return TokenUsage.ZERO;
+    }
 }

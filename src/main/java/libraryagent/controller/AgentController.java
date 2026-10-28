@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 import libraryagent.agent.AgentResponse;
 import libraryagent.agent.Planner;
+import libraryagent.agent.llm.TokenUsage;
 import libraryagent.command.AddToReadingListCommand;
 import libraryagent.command.CheckOutCommand;
 import libraryagent.command.CommandResult;
@@ -54,6 +55,11 @@ public class AgentController {
         return planner != null;
     }
 
+    /** Tokens the AI assistant has used since the app started. */
+    public TokenUsage assistantUsage() {
+        return planner == null ? TokenUsage.ZERO : planner.usage();
+    }
+
     /** Sends a plain-language message to the agent for the current session. */
     public AgentResponse chat(String message) {
         if (planner == null) {
@@ -65,7 +71,7 @@ public class AgentController {
             return AgentResponse.failure("Please type a message.");
         }
         return planner.run(session.getSessionId(), session.getCurrentMember().orElse(null),
-                session.getHistory(), message.strip());
+                session::getHistory, session::login, message.strip());
     }
 
     // ---- Session -------------------------------------------------------------------------

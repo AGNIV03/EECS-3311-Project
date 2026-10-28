@@ -12,13 +12,13 @@ import libraryagent.domain.Book;
 import libraryagent.domain.Member;
 
 /**
- * Assembles what the model sees: the system prompt (with the current member and date), the
- * tool descriptions and the conversation. The system prompt is the same for every request in a
- * session, so it stays cached.
+ * Assembles what the model sees. The system prompt never changes, so it stays cached and the
+ * model's replayed reasoning blocks stay valid. Session details (the logged-in member, today's
+ * date) are sent as system notes inside the conversation instead.
  */
 public class PromptComposer {
 
-    private final String template;
+    private final String systemPrompt;
     private final Clock clock;
 
     public PromptComposer(Clock clock) {
@@ -27,24 +27,28 @@ public class PromptComposer {
             if (in == null) {
                 throw new IllegalStateException("prompts/system.txt is missing from resources");
             }
-            this.template = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            this.systemPrompt = new String(in.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new IllegalStateException("Could not read the system prompt", e);
         }
     }
 
-    public String buildSystemPrompt(Member member) {
-        String who = member == null
-                ? "not logged in"
-                : member.getName() + " (member ID " + member.getMemberId() + ", "
-                        + member.getType().name().toLowerCase() + " member"
-                        + (member.isLibrarian() ? ", librarian" : "") + ")";
-        return template.replace("{{MEMBER}}", who).replace("{{TODAY}}", LocalDate.now(clock).toString());
+    public String buildSystemPrompt() {
+        return systemPrompt;
     }
 
     public LlmRequest buildRequest(AgentContext context, List<ToolSpec> tools) {
-        return new LlmRequest(buildSystemPrompt(context.getMember().orElse(null)), tools, context.getMessages(),
-                LlmRequest.DEFAULT_MAX_TOKENS);
+        return new LlmRequest(systemPrompt, tools, context.getMessages(), LlmRequest.DEFAULT_MAX_TOKENS);
+    }
+
+    /** The session note: who is logged in and today's date. */
+    public String sessionNote(Member member) {
+        String who = member == null
+                ? "The user is not logged in."
+                : "The user is " + member.getName() + " (member ID " + member.getMemberId() + ", "
+                        + member.getType().name().toLowerCase() + " member"
+                        + (member.isLibrarian() ? ", librarian" : "") + ").";
+        return "Session: " + who + " Today's date: " + LocalDate.now(clock) + ".";
     }
 
     /**

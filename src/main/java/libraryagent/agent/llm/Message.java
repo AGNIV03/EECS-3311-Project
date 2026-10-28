@@ -12,7 +12,12 @@ import java.util.stream.Collectors;
  */
 public record Message(Role role, List<MessagePart> parts, Object providerMessage) {
 
-    public enum Role { USER, ASSISTANT }
+    /**
+     * SYSTEM messages are operator notes placed inside the conversation (session details such as
+     * who is logged in). Keeping them out of the top-level system prompt means that prompt never
+     * changes, which the model's replayed reasoning blocks require.
+     */
+    public enum Role { USER, ASSISTANT, SYSTEM }
 
     public Message {
         parts = List.copyOf(parts);
@@ -25,6 +30,11 @@ public record Message(Role role, List<MessagePart> parts, Object providerMessage
     /** All tool results from one round, returned together in a single user message. */
     public static Message toolResults(List<MessagePart.ToolResult> results) {
         return new Message(Role.USER, List.copyOf(results), null);
+    }
+
+    /** An operator note inside the conversation; must follow a user message. */
+    public static Message system(String text) {
+        return new Message(Role.SYSTEM, List.of(new MessagePart.Text(text)), null);
     }
 
     public static Message assistant(List<MessagePart> parts, Object providerMessage) {

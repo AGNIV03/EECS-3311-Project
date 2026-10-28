@@ -3,6 +3,7 @@ package libraryagent.agent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import libraryagent.agent.llm.Message;
 import libraryagent.domain.Book;
@@ -27,6 +28,7 @@ public class MemoryManager {
         final List<Message> history = new ArrayList<>();
         final List<Exchange> exchanges = new ArrayList<>();
         List<Book> lastResults = List.of();
+        Set<String> recommended = Set.of();
     }
 
     private final Map<String, Session> sessions = new ConcurrentHashMap<>();
@@ -56,6 +58,15 @@ public class MemoryManager {
 
     public void setLastResults(String sessionId, List<Book> books) {
         session(sessionId).lastResults = List.copyOf(books);
+    }
+
+    /** ISBNs the recommendation tool has offered in this session (curated lists may only use these). */
+    public Set<String> recommended(String sessionId) {
+        return session(sessionId).recommended;
+    }
+
+    public void setRecommended(String sessionId, Set<String> isbns) {
+        session(sessionId).recommended = Set.copyOf(isbns);
     }
 
     /** Forgets everything for a session (on login or logout). */
