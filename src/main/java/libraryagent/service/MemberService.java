@@ -51,13 +51,7 @@ public class MemberService {
      * in the catalogue's hierarchy; the tracking setting is not changed here.
      */
     public void updatePreferences(Member member, ReadingPreferences prefs) {
-        List<String> canonicalGenres = prefs.getFavoriteGenres().stream()
-                .map(g -> genres.find(g)
-                        .orElseThrow(() -> new LibraryException("\"" + g + "\" is not a genre in the catalogue. "
-                                + "Known subgenres: " + String.join(", ", genres.root().subgenreNames()) + "."))
-                        .getName())
-                .distinct()
-                .toList();
+        List<String> canonicalGenres = canonicalGenres(prefs.getFavoriteGenres());
         List<String> authors = prefs.getFavoriteAuthors().stream().map(String::strip)
                 .filter(a -> !a.isEmpty()).distinct().toList();
         if (prefs.getMaxPages() < 0) {
@@ -65,6 +59,20 @@ public class MemberService {
         }
         member.getPreferences().update(canonicalGenres, authors, prefs.getMaxPages());
         members.save(member);
+    }
+
+    /**
+     * The catalogue's own names for the given genres (case-insensitive, duplicates removed).
+     * Throws with the list of real subgenres if any genre is unknown.
+     */
+    public List<String> canonicalGenres(List<String> names) {
+        return names.stream()
+                .map(g -> genres.find(g)
+                        .orElseThrow(() -> new LibraryException("\"" + g + "\" is not a genre in the catalogue. "
+                                + "Known subgenres: " + String.join(", ", genres.root().subgenreNames()) + "."))
+                        .getName())
+                .distinct()
+                .toList();
     }
 
     public Optional<Member> findById(String memberId) {
