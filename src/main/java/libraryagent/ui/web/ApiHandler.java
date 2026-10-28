@@ -29,6 +29,7 @@ import libraryagent.domain.Loan;
 import libraryagent.domain.Member;
 import libraryagent.domain.MemberType;
 import libraryagent.domain.Rating;
+import libraryagent.service.BookQuery;
 
 /**
  * The web version's JSON API. Every endpoint calls the same {@link AgentController} methods the
@@ -118,9 +119,9 @@ final class ApiHandler implements HttpHandler {
             case "GET /api/notifications":
                 return Map.of("notices", s.drainNotices());
             case "GET /api/search":
-                return locked(() -> Map.of("books", WebViews.books(c.searchKeywords(param(query, "q")), c)));
+                return locked(() -> Map.of("books", WebViews.books(c.search(searchQuery(query)), c)));
             case "GET /api/genres":
-                return locked(() -> Map.of("subgenres", c.subgenres()));
+                return locked(() -> Map.of("subgenres", c.subgenres(), "all", c.genreNames()));
             case "POST /api/reserve":
                 return locked(() -> WebViews.result(c.reserve(memberId(c), text(body, "isbn"))));
             case "GET /api/account":
@@ -327,12 +328,19 @@ final class ApiHandler implements HttpHandler {
         return result;
     }
 
-    private static String param(Map<String, String> query, String key) {
-        String value = query.get(key);
-        if (value == null || value.isBlank()) {
-            throw new ApiError(400, key + " is required.");
+    /** Search parameters, all optional: q (keywords), genre, maxPages. No parameters lists every book. */
+    private static BookQuery searchQuery(Map<String, String> query) {
+        String genre = query.getOrDefault("genre", "").isBlank() ? null : query.get("genre");
+        Integer maxPages = null;
+        String pages = query.getOrDefault("maxPages", "");
+        if (!pages.isBlank()) {
+            try {
+                maxPages = Integer.parseInt(pages.strip());
+            } catch (NumberFormatException e) {
+                throw new ApiError(400, "maxPages must be a number.");
+            }
         }
-        return value;
+        return new BookQuery(null, null, genre, maxPages, BookQuery.ofKeywords(query.getOrDefault("q", "")).keywords());
     }
 
     @SuppressWarnings("unchecked")

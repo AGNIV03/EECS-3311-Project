@@ -4,14 +4,155 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Library Agent</title>
-  <style>
-    body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 3rem auto; padding: 0 1rem; line-height: 1.5; }
-    code { background: #f2f2f2; padding: 0.1rem 0.3rem; border-radius: 3px; }
-  </style>
+  <link rel="stylesheet" href="/app.css">
+  <script src="/app.js" defer></script>
 </head>
 <body>
-  <h1>Library Agent</h1>
-  <p>The browser interface is being built. The server and its JSON API are running.</p>
-  <p>Health check: <a href="/api/health"><code>/api/health</code></a></p>
+  <header class="topbar">
+    <span class="brand">📚 Library Agent</span>
+    <span class="grow"></span>
+    <span id="who"></span>
+    <button id="btn-notices" class="hidden" type="button">Notices</button>
+    <button id="btn-undo" class="hidden" type="button">Undo</button>
+    <button id="btn-signout" class="hidden" type="button">Sign out</button>
+  </header>
+
+  <main>
+    <!-- Start screen -->
+    <section id="start" class="hidden">
+      <h1>Library Agent</h1>
+      <p class="muted">Find, reserve and borrow books by talking to the library's AI assistant.</p>
+      <div class="cards">
+        <form id="form-signin" class="card">
+          <h2>Sign in</h2>
+          <label>Member ID <input name="memberId" placeholder="e.g. M001" required autocomplete="off"></label>
+          <label id="passcode-row" class="hidden">Librarian passcode <input name="passcode" type="password" autocomplete="off"></label>
+          <button type="submit">Sign in</button>
+          <p class="error" id="signin-error"></p>
+          <p class="muted small">Sample accounts: M001 (Alex, standard), M002 (Sam, student)<span id="lib-hint">, LIB001 (librarian, passcode required)</span>.</p>
+        </form>
+        <form id="form-register" class="card wide">
+          <h2>New member? Register</h2>
+          <div class="grid2">
+            <label>Name <input name="name" required></label>
+            <label>Email <input name="email" type="email" required></label>
+            <label>Member type
+              <select name="memberType"><option value="standard">Standard</option><option value="student">Student</option></select>
+            </label>
+            <label>Max pages (optional) <input name="maxPages" type="number" min="1"></label>
+          </div>
+          <label>Favourite genres (Ctrl/⌘+click for several) <select name="favoriteGenres" id="reg-genres" multiple size="5"></select></label>
+          <label>Favourite authors <input name="favoriteAuthors" placeholder="e.g. Andy Weir, Jane Austen"></label>
+          <button type="submit">Create account</button>
+          <p class="error" id="register-error"></p>
+        </form>
+      </div>
+      <div class="row center">
+        <button id="btn-guest" type="button">Browse as a guest</button>
+        <button id="btn-chat-signup" type="button">Sign up by chatting with the assistant</button>
+      </div>
+    </section>
+
+    <!-- Tabs -->
+    <section id="app" class="hidden">
+      <nav class="tabs">
+        <button data-tab="chat" type="button">Chat</button>
+        <button data-tab="catalog" type="button">Catalog</button>
+        <button data-tab="account" type="button" class="needs-member">Account</button>
+        <button data-tab="librarian" type="button" class="needs-librarian">Librarian</button>
+      </nav>
+
+      <div id="tab-chat" class="tab">
+        <div id="chat-log" class="chat-log" aria-live="polite"></div>
+        <form id="form-chat" class="chat-input">
+          <input name="message" id="chat-message" autocomplete="off" maxlength="2000"
+                 placeholder="Ask anything, e.g. &quot;find two short sci-fi books and reserve whichever are free&quot;">
+          <button type="submit" id="chat-send">Send</button>
+        </form>
+      </div>
+
+      <div id="tab-catalog" class="tab hidden">
+        <form id="form-search" class="row">
+          <input name="q" placeholder="Title, author or topic" class="grow">
+          <select name="genre" id="search-genre"><option value="">All genres</option></select>
+          <input name="maxPages" type="number" min="1" placeholder="Max pages" class="narrow">
+          <button type="submit">Search</button>
+        </form>
+        <div class="catalog">
+          <div>
+            <table class="books"><thead><tr><th>Title</th><th>Author</th><th>Pages</th><th>Genres</th><th>Availability</th></tr></thead>
+              <tbody id="results"></tbody></table>
+            <div id="book-detail" class="card detail muted">Select a book to see its details.</div>
+          </div>
+          <aside id="recommend-panel" class="card needs-member">
+            <h2>Recommended for you</h2>
+            <p class="muted small">From your favourite genres, authors and the books you liked.</p>
+            <ul id="recommendations" class="plain"></ul>
+          </aside>
+        </div>
+      </div>
+
+      <div id="tab-account" class="tab hidden">
+        <div class="card"><h2>Account</h2><p id="account-summary"></p>
+          <label class="inline"><input type="checkbox" id="tracking"> Track what I borrow and how I rated it, to improve recommendations</label>
+        </div>
+        <div class="two">
+          <div class="card"><h2>Loans</h2>
+            <table><thead><tr><th>Title</th><th>Copy</th><th>Due</th><th>Status</th><th>Renewals</th><th>Fee</th><th></th></tr></thead><tbody id="loans"></tbody></table>
+          </div>
+          <div class="card"><h2>Holds</h2>
+            <table><thead><tr><th>Title</th><th>Status</th><th></th></tr></thead><tbody id="holds"></tbody></table>
+          </div>
+        </div>
+        <div class="card"><h2>Reading lists</h2>
+          <div class="lists">
+            <div>
+              <ul id="lists" class="plain selectable"></ul>
+              <form id="form-new-list" class="row"><input name="name" placeholder="New list name" required><button type="submit">Create</button></form>
+              <button type="button" id="btn-generate-list">Generate a list with AI</button>
+            </div>
+            <div>
+              <ol id="list-books" class="plain selectable"></ol>
+              <p class="muted small">Use the arrows to reorder, or × to remove.</p>
+            </div>
+          </div>
+        </div>
+        <div class="card"><h2>Borrowing history</h2>
+          <table><thead><tr><th>Checked out</th><th>Title</th><th>Returned</th><th>Your rating</th><th>Rate</th></tr></thead><tbody id="history"></tbody></table>
+        </div>
+      </div>
+
+      <div id="tab-librarian" class="tab hidden">
+        <div class="two">
+          <div class="card"><h2>Desk</h2>
+            <form id="form-checkout" class="row"><input name="memberId" placeholder="Member ID" required><input name="copyId" placeholder="Copy ID" required><button type="submit">Check out</button></form>
+            <form id="form-checkin" class="row"><input name="copyId" placeholder="Copy ID being returned" required><button type="submit">Check in</button></form>
+            <p id="desk-result"></p>
+            <p class="muted small">Copy IDs are shown in each book's details in the Catalog tab.</p>
+          </div>
+          <div class="card"><h2>Overdue loans</h2>
+            <table><thead><tr><th>Title</th><th>Copy</th><th>Member</th><th>Due</th><th>Fee</th></tr></thead><tbody id="overdue"></tbody></table>
+            <button type="button" id="btn-overdue">Check for overdue loans</button>
+          </div>
+        </div>
+        <form id="form-addbook" class="card">
+          <h2>Add a book</h2>
+          <div class="grid2">
+            <label>ISBN <input name="isbn" required></label>
+            <label>Copies <input name="copies" type="number" min="1" value="1" required></label>
+            <label>Title <input name="title" required></label>
+            <label>Pages <input name="pages" type="number" min="1" required></label>
+            <label>Author <input name="author" required></label>
+          </div>
+          <label>Description <textarea name="description" rows="3"></textarea></label>
+          <label>Subgenres (Ctrl/⌘+click for several) <select name="genres" id="book-genres" multiple size="6"></select></label>
+          <div class="row"><button type="button" id="btn-suggest">Suggest genres</button><button type="submit">Add book</button></div>
+          <p id="addbook-result"></p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer id="status" class="status">Welcome.</footer>
 </body>
 </html>

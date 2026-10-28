@@ -91,6 +91,27 @@ class WebServerTest {
     }
 
     @Test
+    void searchSupportsGenreAndLengthAndListsEverythingWithoutParameters() throws Exception {
+        HttpClient b = browser();
+        assertEquals(40, get(b, "/api/search").body().get("books").size());
+        JsonNode sciFi = get(b, "/api/search?genre=Science%20Fiction&maxPages=300").body().get("books");
+        assertTrue(sciFi.size() > 0);
+        sciFi.forEach(book -> assertTrue(book.get("pages").asInt() <= 300));
+        assertEquals("maxPages must be a number.", get(b, "/api/search?maxPages=long").body().get("error").asText());
+        assertTrue(get(b, "/api/genres").body().get("all").toString().contains("Fiction"));
+    }
+
+    @Test
+    void interfaceFilesAreServedWithAContentSecurityPolicy() throws Exception {
+        HttpResponse<String> script = browser().send(HttpRequest.newBuilder(uri("/app.js")).GET().build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, script.statusCode());
+        assertTrue(script.headers().firstValue("Content-Type").orElse("").startsWith("text/javascript"));
+        assertTrue(script.headers().firstValue("Content-Security-Policy").orElse("").contains("default-src 'self'"));
+        assertTrue(script.body().contains("textContent"));
+    }
+
+    @Test
     void loginSearchReserveAndAccount() throws Exception {
         HttpClient b = browser();
         assertTrue(get(b, "/api/me").body().get("member").isNull());
