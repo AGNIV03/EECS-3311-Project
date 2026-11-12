@@ -153,6 +153,7 @@ Run these from the project folder. On macOS/Linux use `./gradlew` instead of `.\
 - `--member <id>`: log in as this member when the CLI starts.
 - `--reset-db`: delete `data/library.db` so it is recreated from the sample data.
 - `--verbose`: print each tool the assistant calls, with its arguments and outcome.
+- `--json`: headless mode for scripts and automated agent tests. No banner or prompts; each input line (a command or plain language) produces one line of JSON with `input`, `kind`, `member` and `output`, plus `reply`, `error`, `tools` and `books` when the line went to the assistant.
 
 When the CLI exits, it prints the tokens the assistant used and an estimated cost.
 

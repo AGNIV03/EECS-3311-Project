@@ -38,7 +38,8 @@ import libraryagent.domain.ReadingList;
  * anything else is plain language for the AI assistant.
  *
  * <p>Options: {@code --member <id>} logs in on start, {@code --reset-db} deletes the database
- * so it is re-created from the sample data.
+ * so it is re-created from the sample data, {@code --verbose} prints each tool call, and
+ * {@code --json} switches to the headless mode in {@link CliJsonMode}.
  */
 public class CliApp {
 
@@ -48,6 +49,8 @@ public class CliApp {
     private final boolean llmEnabled;
     private final CliCommandParser parser = new CliCommandParser();
     private boolean verbose;
+    private boolean quiet;
+    private AgentResponse lastChat;
 
     public CliApp(BufferedReader in, PrintStream out, AgentController controller, boolean llmEnabled) {
         this.in = in;
@@ -59,6 +62,18 @@ public class CliApp {
     /** When on, each tool the assistant calls is printed with its arguments and outcome. */
     public void setVerbose(boolean verbose) {
         this.verbose = verbose;
+    }
+
+    /** When on, progress text such as "(thinking...)" is not printed. Used by the headless mode. */
+    void setQuiet(boolean quiet) {
+        this.quiet = quiet;
+    }
+
+    /** The assistant's reply to the most recent line, if that line went to the assistant; then cleared. */
+    AgentResponse takeLastChat() {
+        AgentResponse response = lastChat;
+        lastChat = null;
+        return response;
     }
 
     public static void main(String[] args) throws IOException {
@@ -74,12 +89,23 @@ public class CliApp {
             Planner planner = llm == null ? null : AgentFactory.createPlanner(services, llm, config.maxSteps());
             GenreTagger tagger = llm == null ? null : AgentFactory.createTagger(services, llm);
             AgentController controller = new AgentController(services, new SessionContext(), planner, tagger);
+            int memberFlag = options.indexOf("--member");
+            String startMember = memberFlag >= 0 && memberFlag + 1 < options.size()
+                    ? options.get(memberFlag + 1) : null;
+            if (options.contains("--json")) {
+                CliJsonMode json = new CliJsonMode(in, out, controller, controller.assistantAvailable());
+                controller.subscribe(new CliNotifier(json.captureStream(), controller));
+                if (startMember != null) {
+                    json.runSilently(new CliAction("login", List.of(startMember)));
+                }
+                json.run();
+                return;
+            }
             controller.subscribe(new CliNotifier(out, controller));
             CliApp app = new CliApp(in, out, controller, controller.assistantAvailable());
             app.setVerbose(options.contains("--verbose"));
-            int memberFlag = options.indexOf("--member");
-            if (memberFlag >= 0 && memberFlag + 1 < options.size()) {
-                app.dispatch(new CliAction("login", List.of(options.get(memberFlag + 1))));
+            if (startMember != null) {
+                app.dispatch(new CliAction("login", List.of(startMember)));
             }
             app.repl();
         }
@@ -326,9 +352,12 @@ public class CliApp {
             out.println("The AI assistant is turned off (no API key configured). Type 'help' for commands.");
             return;
         }
-        out.println("(thinking...)");
-        out.flush();
+        if (!quiet) {
+            out.println("(thinking...)");
+            out.flush();
+        }
         AgentResponse response = controller.chat(text);
+        lastChat = response;
         if (verbose) {
             for (ToolTrace call : response.trace()) {
                 out.println("  [tool] " + call.tool() + " " + call.args()
