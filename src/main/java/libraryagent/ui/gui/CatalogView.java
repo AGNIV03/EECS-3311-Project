@@ -127,13 +127,6 @@ final class CatalogView extends BorderPane {
         }
     }
 
-    /** Shows one book (e.g. from a chat card). */
-    void select(String isbn) {
-        results.getItems().stream().filter(b -> b.getIsbn().equals(isbn)).findFirst()
-                .ifPresentOrElse(b -> results.getSelectionModel().select(b),
-                        () -> showDetail(gui.data(() -> controller.bookDetails(isbn))));
-    }
-
     private void search() {
         try {
             Integer pages = maxPages.getText().isBlank() ? null : Integer.parseInt(maxPages.getText().strip());

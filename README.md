@@ -162,7 +162,7 @@ When the CLI exits, it prints the tokens the assistant used and an estimated cos
 .\gradlew.bat run
 ```
 The start screen lets you sign in, register, browse as a guest, or sign up by chatting. After signing in you get:
-- **Chat:** talk to the assistant. Books in replies have Details and Reserve buttons.
+- **Chat:** talk to the assistant. Books in replies are shown as cards with their availability; to reserve one or learn more, ask the assistant.
 - **Catalog:** search by keywords, genre and length; book details; Reserve or Join hold queue; Add to list; Ask about this book; Recommended for you.
 - **Account:** loans (Renew), holds (Cancel), fees, reading lists (create, reorder, remove, Generate a list with AI), borrowing history with ratings, and the tracking switch.
 - **Librarian** (librarian accounts only): desk check-out and check-in, the overdue list, and Add a book with Suggest genres.

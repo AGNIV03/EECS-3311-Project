@@ -145,9 +145,7 @@ function resetChat() {
 function bookCard(book) {
   return el("div", { class: "book-card" },
     el("div", { class: "info" }, el("strong", {}, book.title), " · " + book.author + " · " + book.pages + " pages",
-      el("br"), el("span", { class: "muted" }, availabilityText(book))),
-    el("button", { type: "button", onclick: () => openBook(book.isbn, true) }, "Details"),
-    el("button", { type: "button", disabled: !state.me, onclick: () => reserve(book.isbn) }, "Reserve"));
+      el("br"), el("span", { class: "muted" }, availabilityText(book))));
 }
 
 async function sendChat(message) {
@@ -190,7 +188,7 @@ async function search() {
   for (const [key, value] of [...params]) if (!value) params.delete(key);
   const data = await attempt(() => api("GET", "/api/search?" + params));
   if (!data) return;
-  const rows = data.books.map((book) => el("tr", { onclick: () => openBook(book.isbn, false) },
+  const rows = data.books.map((book) => el("tr", { onclick: () => openBook(book.isbn) },
     el("td", {}, book.title), el("td", {}, book.author), el("td", {}, book.pages),
     el("td", {}, book.genres.join(", ")), el("td", {}, availabilityText(book))));
   $("results").replaceChildren(...rows);
@@ -202,21 +200,20 @@ async function loadRecommendations() {
   if (!state.me) return;
   const data = await attempt(() => api("GET", "/api/recommendations"));
   if (!data) return;
-  const items = data.books.map((b) => el("li", { onclick: () => openBook(b.isbn, false) },
+  const items = data.books.map((b) => el("li", { onclick: () => openBook(b.isbn) },
     el("strong", {}, b.title), el("span", { class: "muted small" }, b.author)));
   $("recommendations").replaceChildren(...items);
   if (!items.length) $("recommendations").append(el("li", { class: "muted small" }, "Rate books or set favourite genres to get suggestions."));
 }
 
-async function openBook(isbn, switchTab) {
-  if (switchTab) selectTab("catalog");
+async function openBook(isbn) {
   const book = await attempt(() => api("GET", "/api/books/" + encodeURIComponent(isbn)));
   if (!book) return;
   const detail = $("book-detail");
   detail.classList.remove("muted");
   const copies = book.copies.map((c) => c.copyId + " " + c.status).join(", ");
   const actions = el("div", { class: "row" },
-    el("button", { type: "button", disabled: !state.me, onclick: async () => { await reserve(isbn); openBook(isbn, false); } },
+    el("button", { type: "button", disabled: !state.me, onclick: async () => { await reserve(isbn); openBook(isbn); } },
       book.availableCopies > 0 ? "Reserve" : "Join hold queue"),
     el("button", { type: "button", disabled: !state.assistant, onclick: () => askInChat(
       'Tell me about "' + book.title + '" (ISBN ' + book.isbn + "). What is it about, and who is it suitable for?") },

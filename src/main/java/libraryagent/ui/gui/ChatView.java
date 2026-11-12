@@ -21,7 +21,8 @@ import libraryagent.service.Availability;
 
 /**
  * The Chat tab: talk to the AI assistant. Replies run on a background thread so the window stays
- * responsive; books in a reply are shown as cards with Details and Reserve buttons.
+ * responsive; books in a reply are shown as information cards. Acting on them (reserving, adding to a
+ * list, asking for more detail) is done by asking the assistant.
  */
 final class ChatView extends BorderPane implements LibraryEventListener {
 
@@ -106,12 +107,7 @@ final class ChatView extends BorderPane implements LibraryEventListener {
                 ? availability.availableCopies() + " of " + availability.totalCopies() + " available"
                 : "All " + availability.totalCopies() + " out, " + availability.queueLength() + " waiting"));
         text.setWrapText(true);
-        Button details = new Button("Details");
-        details.setOnAction(e -> window.showBook(book.getIsbn()));
-        Button reserve = new Button("Reserve");
-        reserve.setDisable(controller.currentMember().isEmpty());
-        reserve.setOnAction(e -> window.reserve(book));
-        HBox card = new HBox(10, text, Gui.spacer(), details, reserve);
+        HBox card = new HBox(10, text);
         card.setAlignment(Pos.CENTER_LEFT);
         card.getStyleClass().add("book-card");
         return card;

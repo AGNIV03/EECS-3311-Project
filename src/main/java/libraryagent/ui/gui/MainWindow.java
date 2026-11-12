@@ -145,16 +145,6 @@ final class MainWindow extends BorderPane implements LibraryEventListener {
         refreshAll();
     }
 
-    /** Opens a book in the Catalog tab. */
-    void showBook(String isbn) {
-        try {
-            tabs.getSelectionModel().select(catalogTab);
-            catalog.select(isbn);
-        } catch (LibraryException e) {
-            setStatus(e.getMessage());
-        }
-    }
-
     void setStatus(String message) {
         status.setText(message);
     }
