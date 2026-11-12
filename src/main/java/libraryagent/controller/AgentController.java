@@ -181,6 +181,21 @@ public class AgentController {
         return services.members().register(name, email, type);
     }
 
+    /**
+     * Registers a member with reading preferences. The preferences are checked first, so a
+     * rejected genre or page limit never leaves a half-created account behind.
+     */
+    public Member register(String name, String email, MemberType type, List<String> genres, List<String> authors,
+                           int maxPages) {
+        services.members().canonicalGenres(genres);
+        if (maxPages < 0) {
+            throw new LibraryException("Preferred maximum length cannot be negative.");
+        }
+        Member member = services.members().register(name, email, type);
+        services.members().updatePreferences(member, new ReadingPreferences(genres, authors, maxPages, true));
+        return member;
+    }
+
     public void updatePreferences(String memberId, List<String> genres, List<String> authors, int maxPages) {
         Member member = requireSelfOrLibrarian(memberId);
         services.members().updatePreferences(member,

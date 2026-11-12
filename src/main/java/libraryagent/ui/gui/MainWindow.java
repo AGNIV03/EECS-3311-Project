@@ -104,7 +104,19 @@ final class MainWindow extends BorderPane implements LibraryEventListener {
         }
     }
 
+    /** A member signed up inside the conversation: switch to their tabs without clearing it. */
+    void memberChangedInChat(Member member) {
+        pendingNotices.clear();
+        showMain();
+        tabs.getSelectionModel().select(chatTab);
+        setStatus("Signed in as " + member.getName() + " (" + member.getMemberId() + ").");
+    }
+
     void signOut() {
+        if (chat.isBusy()) {
+            setStatus("Please wait for the assistant to finish before signing out.");
+            return;
+        }
         gui.dataRun(controller::logout);
         chat.clear();
         pendingNotices.clear();

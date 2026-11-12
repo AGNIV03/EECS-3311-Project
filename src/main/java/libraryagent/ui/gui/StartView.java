@@ -114,10 +114,9 @@ final class StartView extends VBox {
                         .map(String::strip).filter(s -> !s.isEmpty()).toList();
                 Member member = gui.data(() -> {
                     Member created = controller.register(name.getText(), email.getText(),
-                            MemberType.parse(type.getValue()));
-                    controller.login(created.getMemberId());
-                    controller.updatePreferences(created.getMemberId(),
+                            MemberType.parse(type.getValue()),
                             List.copyOf(genres.getSelectionModel().getSelectedItems()), authorList, pages);
+                    controller.login(created.getMemberId());
                     return created;
                 });
                 error.setText("");

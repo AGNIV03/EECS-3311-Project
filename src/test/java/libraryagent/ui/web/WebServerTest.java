@@ -15,6 +15,7 @@ import java.net.http.HttpResponse;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Map;
 import libraryagent.agent.llm.BudgetedLLMClient;
 import libraryagent.agent.llm.FakeLLMClient;
@@ -99,6 +100,40 @@ class WebServerTest {
         sciFi.forEach(book -> assertTrue(book.get("pages").asInt() <= 300));
         assertEquals("maxPages must be a number.", get(b, "/api/search?maxPages=long").body().get("error").asText());
         assertTrue(get(b, "/api/genres").body().get("all").toString().contains("Fiction"));
+    }
+
+    @Test
+    void healthCheckDoesNotCreateASession() throws Exception {
+        HttpResponse<String> health = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder(uri("/api/health")).GET().build(), HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, health.statusCode());
+        assertTrue(health.headers().firstValue("Set-Cookie").isEmpty());
+    }
+
+    @Test
+    void librarianPasscodeGuessesAreThrottled() throws Exception {
+        HttpClient b = browser();
+        Map<String, Object> guess = Map.of("memberId", "LIB001", "passcode", "wrong");
+        for (int i = 0; i < 10; i++) {
+            assertEquals(403, post(b, "/api/login", guess).status());
+        }
+        assertEquals(429, post(b, "/api/login", guess).status());
+        assertEquals(429, post(b, "/api/login", Map.of("memberId", "LIB001", "passcode", "shelf-42")).status());
+    }
+
+    @Test
+    void registrationWithABadPreferenceCreatesNoAccount() throws Exception {
+        HttpClient b = browser();
+        Map<String, Object> form = Map.of("name", "Pat Lee", "email", "pat@example.com", "memberType", "standard",
+                "favoriteGenres", List.of("Cooking"), "favoriteAuthors", List.of(), "maxPages", 0);
+        assertEquals(400, post(b, "/api/register", form).status());
+        assertTrue(get(b, "/api/me").body().get("member").isNull());
+
+        Map<String, Object> fixed = Map.of("name", "Pat Lee", "email", "pat@example.com", "memberType", "standard",
+                "favoriteGenres", List.of("Fantasy"), "favoriteAuthors", List.of(), "maxPages", 0);
+        Reply created = post(b, "/api/register", fixed);
+        assertEquals(200, created.status());
+        assertEquals("Pat Lee", created.body().get("member").get("name").asText());
     }
 
     @Test

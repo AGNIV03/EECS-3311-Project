@@ -113,7 +113,7 @@ final class CatalogView extends BorderPane {
     /** Reloads results, availability and recommendations. */
     void refresh() {
         Book selected = results.getSelectionModel().getSelectedItem();
-        search();
+        search(false);
         if (selected != null) {
             results.getSelectionModel().select(selected);
         }
@@ -128,13 +128,23 @@ final class CatalogView extends BorderPane {
     }
 
     private void search() {
+        search(true);
+    }
+
+    /**
+     * @param announce show the result count in the status bar. Off for refreshes after another
+     *                 action, so that action's message stays visible.
+     */
+    private void search(boolean announce) {
         try {
             Integer pages = maxPages.getText().isBlank() ? null : Integer.parseInt(maxPages.getText().strip());
             String selectedGenre = ALL_GENRES.equals(genre.getValue()) ? null : genre.getValue();
             BookQuery query = new BookQuery(null, null, selectedGenre, pages, BookQuery.ofKeywords(keywords.getText()).keywords());
             List<Book> books = gui.data(() -> controller.search(query));
             results.getItems().setAll(books);
-            window.setStatus(books.size() + " book(s) found.");
+            if (announce) {
+                window.setStatus(books.size() + " book(s) found.");
+            }
         } catch (NumberFormatException e) {
             window.setStatus("Max pages must be a number.");
         } catch (LibraryException e) {

@@ -17,6 +17,7 @@ import libraryagent.config.AppConfig;
 import libraryagent.controller.AgentController;
 import libraryagent.controller.LibraryServices;
 import libraryagent.controller.SessionContext;
+import libraryagent.domain.LibraryException;
 
 /**
  * JavaFX entry point. Options: {@code --member <id>} signs in on start, {@code --tab <name>}
@@ -53,7 +54,11 @@ public class LibraryApp extends Application {
 
         int member = args.indexOf("--member");
         if (member >= 0 && member + 1 < args.size()) {
-            window.onSignedIn(controller.login(args.get(member + 1)));
+            try {
+                window.onSignedIn(controller.login(args.get(member + 1)));
+            } catch (LibraryException e) {
+                window.setStatus(e.getMessage());
+            }
         }
         int tab = args.indexOf("--tab");
         if (tab >= 0 && tab + 1 < args.size()) {

@@ -33,6 +33,7 @@ final class ChatView extends BorderPane implements LibraryEventListener {
     private final ScrollPane scroll = new ScrollPane(messages);
     private final TextField input = new TextField();
     private final Button send = new Button("Send");
+    private boolean busy;
 
     ChatView(AgentController controller, Gui gui, MainWindow window) {
         this.controller = controller;
@@ -68,7 +69,7 @@ final class ChatView extends BorderPane implements LibraryEventListener {
 
     /** Sends a message as if the user had typed it. */
     void send(String text) {
-        if (text == null || text.isBlank() || !controller.assistantAvailable()) {
+        if (text == null || text.isBlank() || !controller.assistantAvailable() || busy) {
             return;
         }
         String message = text.strip();
@@ -82,10 +83,12 @@ final class ChatView extends BorderPane implements LibraryEventListener {
             showReply(response);
             setBusy(false);
             Member after = controller.currentMember().orElse(null);
-            if (before != after) {
-                window.onSignedIn(after);
+            if (after != null && !after.equals(before)) {
+                // Registered by chat: show the member's tabs, and keep the conversation.
+                window.memberChangedInChat(after);
+            } else {
+                window.refreshAll();
             }
-            window.refreshAll();
         }, error -> {
             messages.getChildren().remove(thinking);
             addBubble("Something went wrong: " + error.getMessage(), "error-bubble");
@@ -124,7 +127,13 @@ final class ChatView extends BorderPane implements LibraryEventListener {
         return bubble;
     }
 
+    /** True while the assistant is answering. */
+    boolean isBusy() {
+        return busy;
+    }
+
     private void setBusy(boolean busy) {
+        this.busy = busy;
         input.setDisable(busy);
         send.setDisable(busy);
         if (!busy) {

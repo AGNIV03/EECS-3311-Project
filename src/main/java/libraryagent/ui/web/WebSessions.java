@@ -45,7 +45,11 @@ final class WebSessions {
             }
         }
         if (sessions.size() >= MAX_SESSIONS) {
-            sessions.values().stream().min(Comparator.comparing(s -> s.lastSeen)).ifPresent(this::remove);
+            // Make room with the longest-idle guest session; signed-in visitors go last.
+            sessions.values().stream()
+                    .min(Comparator.comparing((WebSession s) -> s.context.getCurrentMember().isPresent())
+                            .thenComparing(s -> s.lastSeen))
+                    .ifPresent(this::remove);
         }
         byte[] bytes = new byte[24];
         random.nextBytes(bytes);

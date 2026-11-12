@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.function.Supplier;
 import java.util.logging.Level;
@@ -46,12 +47,17 @@ final class ApiHandler implements HttpHandler {
     private final WebSessions sessions;
     private final Lock dataLock;
     private final AppConfig config;
+    /** How long a request waits for the same browser's previous request before giving up. */
+    private static final int BUSY_WAIT_SECONDS = 2;
+
     private final RateLimiter chatLimiter;
     private final RateLimiter registerLimiter;
+    private final RateLimiter loginLimiter;
     private final ObjectMapper json = new ObjectMapper();
 
     ApiHandler(WebSessions sessions, Lock dataLock, AppConfig config, RateLimiter chatLimiter,
-               RateLimiter registerLimiter) {
+               RateLimiter registerLimiter, RateLimiter loginLimiter) {
+        this.loginLimiter = loginLimiter;
         this.sessions = sessions;
         this.dataLock = dataLock;
         this.config = config;
@@ -64,18 +70,23 @@ final class ApiHandler implements HttpHandler {
         int status = 200;
         Object payload;
         try {
-            WebSession session = sessions.getOrCreate(cookieToken(exchange));
-            exchange.getResponseHeaders().add("Set-Cookie", COOKIE + "=" + session.token
-                    + "; Path=/; HttpOnly; SameSite=Strict" + (config.cookieSecure() ? "; Secure" : ""));
             String method = exchange.getRequestMethod();
             String path = exchange.getRequestURI().getPath();
-            Map<String, Object> body = method.equals("POST") ? readBody(exchange) : Map.of();
-            Map<String, String> query = query(exchange.getRequestURI().getRawQuery());
-            session.lock.lock();
-            try {
-                payload = route(method, path, body, query, session, clientIp(exchange));
-            } finally {
-                session.lock.unlock();
+            if (method.equals("GET") && path.equals("/api/health")) {
+                // Monitoring probes must not create sessions.
+                payload = Map.of("status", "ok");
+            } else {
+                WebSession session = sessions.getOrCreate(cookieToken(exchange));
+                exchange.getResponseHeaders().add("Set-Cookie", COOKIE + "=" + session.token
+                        + "; Path=/; HttpOnly; SameSite=Strict" + (config.cookieSecure() ? "; Secure" : ""));
+                Map<String, Object> body = method.equals("POST") ? readBody(exchange) : Map.of();
+                Map<String, String> query = query(exchange.getRequestURI().getRawQuery());
+                if (method.equals("GET") && path.equals("/api/notifications")) {
+                    // Answered without the session lock so polling never waits behind a chat.
+                    payload = Map.of("notices", session.drainNotices());
+                } else {
+                    payload = routeExclusively(method, path, body, query, session, clientIp(exchange));
+                }
             }
         } catch (ApiError e) {
             status = e.status;
@@ -97,6 +108,30 @@ final class ApiHandler implements HttpHandler {
         }
     }
 
+    /**
+     * Runs one request at a time per session. A request that arrives while another from the same
+     * browser is still running (usually a chat waiting for the model) is turned away after a
+     * short wait, so one visitor cannot tie up the server's worker threads.
+     */
+    private Object routeExclusively(String method, String path, Map<String, Object> body,
+                                    Map<String, String> query, WebSession session, String ip) {
+        boolean acquired;
+        try {
+            acquired = session.lock.tryLock(BUSY_WAIT_SECONDS, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            acquired = false;
+        }
+        if (!acquired) {
+            throw new ApiError(429, "Your previous request is still running. Please wait for it to finish.");
+        }
+        try {
+            return route(method, path, body, query, session, ip);
+        } finally {
+            session.lock.unlock();
+        }
+    }
+
     private Object route(String method, String path, Map<String, Object> body, Map<String, String> query,
                          WebSession s, String ip) {
         AgentController c = s.controller;
@@ -106,9 +141,13 @@ final class ApiHandler implements HttpHandler {
             case "GET /api/me":
                 return locked(() -> me(s));
             case "POST /api/login":
+                if (!loginLimiter.tryAcquire(ip)) {
+                    throw new ApiError(429, "Too many sign-in attempts. Please try again in a minute.");
+                }
                 return locked(() -> login(s, body));
             case "POST /api/logout":
                 return locked(() -> {
+                    s.clearNotices();
                     c.logout();
                     return me(s);
                 });
@@ -181,18 +220,18 @@ final class ApiHandler implements HttpHandler {
                 break;
         }
         if (method.equals("GET") && path.startsWith("/api/books/")) {
-            String isbn = decode(path.substring("/api/books/".length()));
+            String isbn = path.substring("/api/books/".length());
             return locked(() -> {
                 Book book = c.bookDetails(isbn);
                 return WebViews.bookDetail(book, c.availability(book));
             });
         }
         if (method.equals("POST") && path.startsWith("/api/reservations/") && path.endsWith("/cancel")) {
-            String id = decode(path.substring("/api/reservations/".length(), path.length() - "/cancel".length()));
+            String id = path.substring("/api/reservations/".length(), path.length() - "/cancel".length());
             return locked(() -> WebViews.result(c.cancelReservation(id)));
         }
         if (method.equals("POST") && path.startsWith("/api/loans/") && path.endsWith("/renew")) {
-            String id = decode(path.substring("/api/loans/".length(), path.length() - "/renew".length()));
+            String id = path.substring("/api/loans/".length(), path.length() - "/renew".length());
             return locked(() -> WebViews.result(c.renew(id)));
         }
         throw new ApiError(404, "No such API endpoint: " + method + " " + path);
@@ -220,6 +259,7 @@ final class ApiHandler implements HttpHandler {
                 throw new ApiError(403, "Wrong librarian passcode.");
             }
         }
+        s.clearNotices();
         s.controller.login(member.getMemberId());
         return me(s);
     }
@@ -230,12 +270,12 @@ final class ApiHandler implements HttpHandler {
         }
         return locked(() -> {
             AgentController c = s.controller;
-            Member member = c.register(text(body, "name"), text(body, "email"),
-                    MemberType.parse(text(body, "memberType")));
-            c.login(member.getMemberId());
             Object pages = body.get("maxPages");
-            c.updatePreferences(member.getMemberId(), strings(body, "favoriteGenres"),
+            Member member = c.register(text(body, "name"), text(body, "email"),
+                    MemberType.parse(text(body, "memberType")), strings(body, "favoriteGenres"),
                     strings(body, "favoriteAuthors"), pages instanceof Number n ? n.intValue() : 0);
+            s.clearNotices();
+            c.login(member.getMemberId());
             return me(s);
         });
     }
@@ -380,7 +420,11 @@ final class ApiHandler implements HttpHandler {
     }
 
     private static String decode(String value) {
-        return URLDecoder.decode(value, StandardCharsets.UTF_8);
+        try {
+            return URLDecoder.decode(value, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException e) {
+            throw new ApiError(400, "The request address is not valid.");
+        }
     }
 
     private static String cookieToken(HttpExchange exchange) {

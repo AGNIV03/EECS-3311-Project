@@ -68,9 +68,10 @@ public final class WebServer implements AutoCloseable {
         WebSessions sessions = new WebSessions(services, planner, tagger, clock);
         RateLimiter chatLimiter = new RateLimiter(config.chatPerMinute(), config.chatPerHour(), clock);
         RateLimiter registerLimiter = new RateLimiter(3, 10, clock);
+        RateLimiter loginLimiter = new RateLimiter(10, 60, clock);
         try {
             HttpServer http = HttpServer.create(new InetSocketAddress(port), 0);
-            http.createContext("/api/", new ApiHandler(sessions, dataLock, config, chatLimiter, registerLimiter));
+            http.createContext("/api/", new ApiHandler(sessions, dataLock, config, chatLimiter, registerLimiter, loginLimiter));
             http.createContext("/", new StaticHandler());
             ExecutorService workers = Executors.newFixedThreadPool(16);
             http.setExecutor(workers);

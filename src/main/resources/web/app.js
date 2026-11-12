@@ -2,7 +2,7 @@
 // All server and model text is inserted with textContent, never as HTML.
 "use strict";
 
-const state = { me: null, assistant: false, librarianSignIn: false, tab: "chat", lists: [], selectedList: null, notices: [] };
+const state = { me: null, assistant: false, busy: false, librarianSignIn: false, tab: "chat", lists: [], selectedList: null, notices: [] };
 const $ = (id) => document.getElementById(id);
 
 // ---- Helpers ---------------------------------------------------------------------------
@@ -44,8 +44,21 @@ async function attempt(action) {
     return await action();
   } catch (error) {
     status(error.message, true);
+    if (state.me && error.message === "Please log in first.") await sessionEnded();
     return null;
   }
+}
+
+// The server no longer knows this browser (idle for two hours, or the server restarted).
+async function sessionEnded() {
+  await loadMe().catch(() => { state.me = null; });
+  if (state.me) return;
+  resetChat();
+  state.notices = [];
+  state.lists = [];
+  state.selectedList = null;
+  showStart();
+  status("Your session ended. Please sign in again.", true);
 }
 
 function availabilityText(book) {
@@ -115,13 +128,15 @@ function selectTab(tab) {
 }
 
 async function refreshTab(tab) {
-  if (tab === "catalog") { await search(); await loadRecommendations(); }
+  if (tab === "catalog") { await search(true); await loadRecommendations(); }
   if (tab === "account" && state.me) await loadAccount();
 }
 
 async function signedInChanged() {
   resetChat();
   state.notices = [];
+  state.lists = [];
+  state.selectedList = null;
   await loadMe();
   showApp(state.me ? "chat" : state.tab);
   if (state.me) status("Signed in as " + state.me.name + " (" + state.me.memberId + ").");
@@ -150,7 +165,8 @@ function bookCard(book) {
 
 async function sendChat(message) {
   message = (message || "").trim();
-  if (!message || !state.assistant) return;
+  if (!message || !state.assistant || state.busy) return;
+  state.busy = true;
   $("chat-message").value = "";
   bubble(message, "user");
   const thinking = bubble("Thinking…", "thinking");
@@ -165,11 +181,15 @@ async function sendChat(message) {
     $("chat-log").scrollTop = $("chat-log").scrollHeight;
     await loadMe();
     const isMember = state.me ? state.me.memberId : null;
-    if (isMember !== wasMember) { showApp("chat"); status("Signed in as " + state.me.name + "."); }
+    if (isMember !== wasMember) {
+      if (state.me) { showApp("chat"); status("Signed in as " + state.me.name + "."); }
+      else await sessionEnded();
+    }
   } catch (error) {
     thinking.remove();
     bubble(error.message, "error");
   } finally {
+    state.busy = false;
     $("chat-message").disabled = !state.assistant;
     $("chat-send").disabled = !state.assistant;
     $("chat-message").focus();
@@ -183,7 +203,7 @@ function askInChat(message) {
 
 // ---- Catalog ---------------------------------------------------------------------------
 
-async function search() {
+async function search(quiet) {
   const params = new URLSearchParams(formData($("form-search")));
   for (const [key, value] of [...params]) if (!value) params.delete(key);
   const data = await attempt(() => api("GET", "/api/search?" + params));
@@ -193,7 +213,7 @@ async function search() {
     el("td", {}, book.genres.join(", ")), el("td", {}, availabilityText(book))));
   $("results").replaceChildren(...rows);
   if (!rows.length) $("results").append(el("tr", {}, el("td", { colSpan: 5, class: "muted" }, "No books match. Try fewer words or another genre.")));
-  status(data.books.length + " book(s) found.");
+  if (quiet !== true) status(data.books.length + " book(s) found.");
 }
 
 async function loadRecommendations() {
@@ -219,6 +239,8 @@ async function openBook(isbn) {
       'Tell me about "' + book.title + '" (ISBN ' + book.isbn + "). What is it about, and who is it suitable for?") },
       "Ask about this book"));
   if (state.me) {
+    const lists = await api("GET", "/api/lists").catch(() => null);
+    if (lists) state.lists = lists.lists;
     const select = el("select", {}, el("option", { value: "" }, "Reading list…"),
       ...state.lists.map((l) => el("option", { value: l.name }, l.name)));
     actions.append(select, el("button", { type: "button", onclick: async () => {
@@ -240,7 +262,7 @@ async function openBook(isbn) {
 async function reserve(isbn) {
   if (!state.me) { status("Sign in to reserve books."); return; }
   const r = await attempt(() => api("POST", "/api/reserve", { isbn }));
-  if (r) { status(r.message, !r.success); refreshTab(state.tab); }
+  if (r) { await refreshTab(state.tab); status(r.message, !r.success); }
 }
 
 // ---- Account ---------------------------------------------------------------------------
@@ -311,7 +333,8 @@ function renderLists() {
 
 async function act(method, path, body) {
   const r = await attempt(() => api(method, path, body));
-  if (r) { status(r.message, r.success === false); await refreshTab(state.tab); }
+  if (r) { await refreshTab(state.tab); status(r.message, r.success === false); }
+  return r;
 }
 
 // ---- Librarian -------------------------------------------------------------------------
@@ -352,9 +375,9 @@ async function pollNotices() {
     state.notices.push(notice.message);
     bubble("🔔 " + notice.message, "notice");
   }
-  status("New notice: " + data.notices[data.notices.length - 1].message);
   renderHeader();
-  refreshTab(state.tab);
+  await refreshTab(state.tab);
+  status("New notice: " + data.notices[data.notices.length - 1].message);
 }
 
 // ---- Wiring ----------------------------------------------------------------------------
@@ -392,12 +415,14 @@ function wire() {
     await loadMe();
     resetChat();
     state.notices = [];
+    state.lists = [];
+    state.selectedList = null;
     showStart();
     status("Signed out.");
   });
   $("btn-undo").addEventListener("click", async () => {
     const r = await attempt(() => api("POST", "/api/undo"));
-    if (r) { status(r.message); refreshTab(state.tab); }
+    if (r) { await refreshTab(state.tab); status(r.message); }
   });
   $("btn-notices").addEventListener("click", () => {
     alert(state.notices.length ? state.notices.join("\n\n") : "No new notices.");
@@ -409,14 +434,17 @@ function wire() {
   $("form-search").addEventListener("submit", (e) => { e.preventDefault(); search(); });
   $("tracking").addEventListener("change", async (e) => {
     const r = await attempt(() => api("POST", "/api/tracking", { on: e.target.checked }));
+    if (!r) e.target.checked = !e.target.checked;
     if (r) status(e.target.checked ? "Reading feedback tracking is on." : "Reading feedback tracking is off. Ratings won't be saved.");
   });
   $("form-new-list").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const name = e.target.name.value;
-    await act("POST", "/api/lists", { name });
-    state.selectedList = name;
-    e.target.reset();
+    const name = e.target.name.value.trim();
+    const r = await act("POST", "/api/lists", { name });
+    if (r && r.success !== false) {
+      state.selectedList = name;
+      e.target.reset();
+    }
     renderLists();
   });
   $("btn-generate-list").addEventListener("click", () =>

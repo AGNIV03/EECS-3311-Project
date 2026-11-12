@@ -52,6 +52,11 @@ final class WebSession implements LibraryEventListener {
         }
     }
 
+    /** Drops pending notices; called when the signed-in member changes. */
+    void clearNotices() {
+        notices.clear();
+    }
+
     /** Returns and clears the pending notices. */
     List<Map<String, Object>> drainNotices() {
         List<Map<String, Object>> drained = new ArrayList<>();
