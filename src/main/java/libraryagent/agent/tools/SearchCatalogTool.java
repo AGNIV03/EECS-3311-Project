@@ -40,14 +40,14 @@ public class SearchCatalogTool extends AbstractTool {
                         "title", stringProperty("Text the title must contain."),
                         "author", stringProperty("Text the author's name must contain."),
                         "genre", stringProperty("Category or subgenre name."),
-                        "maxPages", integerProperty("Maximum page count, for requests like 'not too long'.")),
+                        "maxPages", integerProperty("Maximum page count, for requests like 'not too long'; 0 for no limit.")),
                 List.of());
     }
 
     @Override
     protected List<String> validate(Map<String, Object> args) {
         List<String> errors = new ArrayList<>();
-        checkInteger(args, "maxPages", 1, errors);
+        checkInteger(args, "maxPages", 0, errors);
         if (errors.isEmpty() && query(args).isEmpty()) {
             errors.add("give at least one of keywords, title, author, genre or maxPages");
         }
@@ -70,6 +70,11 @@ public class SearchCatalogTool extends AbstractTool {
 
     private static BookQuery query(Map<String, Object> args) {
         return new BookQuery(string(args, "title"), string(args, "author"), string(args, "genre"),
-                integer(args, "maxPages"), strings(args, "keywords"));
+                positive(integer(args, "maxPages")), strings(args, "keywords"));
+    }
+
+    /** 0 means "no limit", as in the other tools. */
+    private static Integer positive(Integer value) {
+        return value == null || value <= 0 ? null : value;
     }
 }

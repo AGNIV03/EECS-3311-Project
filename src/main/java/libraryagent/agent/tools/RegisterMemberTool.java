@@ -39,7 +39,7 @@ public class RegisterMemberTool extends AbstractTool {
                         "memberType", enumProperty("standard, or student for students.", "standard", "student"),
                         "favoriteGenres", stringArrayProperty("Catalogue genres the member enjoys."),
                         "favoriteAuthors", stringArrayProperty("Authors the member enjoys."),
-                        "maxPages", integerProperty("Preferred maximum book length in pages, if they gave one.")),
+                        "maxPages", integerProperty("Preferred maximum book length in pages; 0 if they gave none.")),
                 List.of("name", "email", "memberType"));
     }
 
@@ -49,7 +49,7 @@ public class RegisterMemberTool extends AbstractTool {
         requireString(args, "name", errors);
         requireString(args, "email", errors);
         requireString(args, "memberType", errors);
-        checkInteger(args, "maxPages", 1, errors);
+        checkInteger(args, "maxPages", 0, errors);
         return errors;
     }
 

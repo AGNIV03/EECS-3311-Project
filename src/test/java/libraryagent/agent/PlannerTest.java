@@ -15,6 +15,8 @@ import java.util.Map;
 import libraryagent.agent.llm.FakeLLMClient;
 import libraryagent.agent.llm.LlmException;
 import libraryagent.agent.llm.LlmRequest;
+import libraryagent.agent.llm.TokenUsage;
+import libraryagent.agent.llm.LlmResponse;
 import libraryagent.agent.llm.Message;
 import libraryagent.agent.llm.MessagePart;
 import libraryagent.agent.llm.ToolSpec;
@@ -190,6 +192,50 @@ class PlannerTest {
     void refusalGetsAPoliteAnswer() {
         llm.reply(FakeLLMClient.refusal());
         assertEquals(ResponseParser.REFUSAL_TEXT, ask("something unsafe").text());
+    }
+
+    /** True when every assistant message a request replays has text and no unanswered tool call. */
+    private static void assertReplayable(LlmRequest request) {
+        List<Message> messages = request.messages();
+        for (int i = 0; i < messages.size(); i++) {
+            Message m = messages.get(i);
+            if (m.role() != Message.Role.ASSISTANT) {
+                continue;
+            }
+            assertFalse(m.parts().isEmpty(), "assistant message with no content at " + i);
+            if (!m.toolUses().isEmpty()) {
+                assertTrue(i + 1 < messages.size() && messages.get(i + 1).parts().stream()
+                        .anyMatch(MessagePart.ToolResult.class::isInstance), "tool call without a result at " + i);
+            }
+        }
+    }
+
+    @Test
+    void conversationContinuesAfterARefusal() {
+        llm.reply(FakeLLMClient.refusal()).reply(text("Sure."));
+        ask("something unsafe");
+        assertEquals("Sure.", ask("ok, find me a book instead").text());
+        assertReplayable(llm.requests().get(1));
+    }
+
+    @Test
+    void toolCallCutOffByTheLengthLimitIsNotStoredAsAnOpenCall() {
+        llm.reply(new LlmResponse(List.of(new MessagePart.Text("Let me look."), call("t1", "lookup", Map.of("q", "x"))),
+                        LlmResponse.StopReason.MAX_TOKENS, TokenUsage.ZERO, null))
+                .reply(text("Here you go."));
+        AgentResponse cut = ask("find books");
+        assertTrue(cut.toolsUsed().isEmpty(), "a cut-off call must not run");
+        assertEquals("Here you go.", ask("try again").text());
+        assertReplayable(llm.requests().get(1));
+    }
+
+    @Test
+    void groundingMatchesWholeTitlesOnly() {
+        Book wonder = new Book("9781000000099", "Wonder", "R.J. Palacio", 310, "");
+        assertEquals(List.of(dune), Planner.booksMentioned("Dune is a wonderful pick.", List.of(wonder, dune)));
+        assertEquals(List.of(wonder, dune),
+                Planner.booksMentioned("Try \"Wonder\", then DUNE.", List.of(dune, wonder)));
+        assertEquals(List.of(wonder), Planner.booksMentioned("ISBN 9781000000099 is in.", List.of(wonder, dune)));
     }
 
     @Test

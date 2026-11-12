@@ -9,11 +9,12 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import libraryagent.agent.llm.LLMClient;
 import libraryagent.agent.llm.LlmException;
 import libraryagent.agent.llm.LlmResponse;
@@ -88,12 +89,18 @@ public class Planner {
                 return failed(sessionId, context, turn, message, trace, e);
             }
             Message reply = response.toMessage();
-            add(context, turn, reply);
-
             AgentDecision decision = parser.parse(response);
             if (decision instanceof AgentDecision.FinalAnswer answer) {
+                // A reply that cannot be replayed (a tool call cut off before it ran, a refusal, or
+                // no text at all) is stored as the plain text the user saw. Storing it as received
+                // would make the API reject every later request in this conversation.
+                boolean replayable = reply.toolUses().isEmpty() && !reply.text().isBlank()
+                        && response.stopReason() != LlmResponse.StopReason.REFUSAL;
+                add(context, turn, replayable ? reply
+                        : Message.assistant(List.of(new MessagePart.Text(answer.text())), null));
                 return finish(sessionId, context, turn, message, answer.text(), trace);
             }
+            add(context, turn, reply);
             Member before = context.getMember().orElse(null);
             List<MessagePart.ToolResult> results = new ArrayList<>();
             for (ToolCall call : ((AgentDecision.ToolCalls) decision).calls()) {
@@ -173,13 +180,12 @@ public class Planner {
      * that the answer actually names, in the order the answer names them.
      */
     static List<Book> booksMentioned(String text, List<Book> toolBooks) {
-        String lower = text.toLowerCase(Locale.ROOT);
         Map<Book, Integer> positions = new LinkedHashMap<>();
         for (Book book : toolBooks) {
-            int at = lower.indexOf(book.getTitle().toLowerCase(Locale.ROOT));
-            if (at < 0) {
-                at = lower.indexOf(book.getIsbn());
-            }
+            // Whole words only: "a wonderful pick" does not name the book "Wonder".
+            Matcher title = Pattern.compile("(?<![\\p{L}\\p{N}])" + Pattern.quote(book.getTitle())
+                    + "(?![\\p{L}\\p{N}])", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE).matcher(text);
+            int at = title.find() ? title.start() : text.indexOf(book.getIsbn());
             if (at >= 0) {
                 positions.put(book, at);
             }

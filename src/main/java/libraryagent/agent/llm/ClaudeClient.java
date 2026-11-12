@@ -74,8 +74,15 @@ public class ClaudeClient implements LLMClient {
         } catch (AnthropicIoException e) {
             throw new LlmException(LlmException.Kind.UNAVAILABLE,
                     "Could not reach the AI assistant. Check your internet connection.", e);
+        } catch (RuntimeException e) {
+            throw unreadable(e);
         }
-        LlmResponse response = fromMessage(reply);
+        LlmResponse response;
+        try {
+            response = fromMessage(reply);
+        } catch (RuntimeException e) {
+            throw unreadable(e);
+        }
         synchronized (this) {
             totalUsage = totalUsage.plus(response.usage());
         }
@@ -193,6 +200,12 @@ public class ClaudeClient implements LLMClient {
     private static TokenUsage toUsage(Usage usage) {
         return new TokenUsage(usage.inputTokens(), usage.outputTokens(),
                 usage.cacheReadInputTokens().orElse(0L), usage.cacheCreationInputTokens().orElse(0L));
+    }
+
+    /** Anything else from the SDK, e.g. a response that fails its validation. */
+    private static LlmException unreadable(RuntimeException e) {
+        return new LlmException(LlmException.Kind.UNAVAILABLE,
+                "The AI assistant returned a response that could not be read. Please try again.", e);
     }
 
     private static LlmException unavailable(AnthropicServiceException e) {

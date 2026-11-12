@@ -61,7 +61,7 @@ class CatalogToolsTest {
         SearchCatalogTool tool = new SearchCatalogTool(services.catalog());
         assertEquals("Invalid arguments for searchCatalog: give at least one of keywords, title, author, genre or "
                 + "maxPages", tool.execute(Map.of(), guest).error());
-        assertEquals("Invalid arguments for searchCatalog: maxPages must be at least 1",
+        assertEquals("Invalid arguments for searchCatalog: maxPages must be at least 0",
                 tool.execute(Map.of("maxPages", -5), guest).error());
         assertEquals("Invalid arguments for searchCatalog: maxPages must be a whole number",
                 tool.execute(Map.of("maxPages", "short"), guest).error());
