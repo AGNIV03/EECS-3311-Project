@@ -150,7 +150,7 @@ class WebServerTest {
     void loginSearchReserveAndAccount() throws Exception {
         HttpClient b = browser();
         assertTrue(get(b, "/api/me").body().get("member").isNull());
-        assertEquals("Alex Morgan", post(b, "/api/login", Map.of("memberId", "M001")).body()
+        assertEquals("Alex Morgan", post(b, "/api/login", Map.of("memberId", "M001", "email", "alex.morgan@example.com")).body()
                 .get("member").get("name").asText());
         JsonNode books = get(b, "/api/search?q=hobbit").body().get("books");
         assertEquals("The Hobbit", books.get(0).get("title").asText());
@@ -165,10 +165,21 @@ class WebServerTest {
     }
 
     @Test
+    void memberSignInNeedsTheAccountsEmail() throws Exception {
+        HttpClient b = browser();
+        assertEquals(403, post(b, "/api/login", Map.of("memberId", "M001")).status());
+        assertEquals(403, post(b, "/api/login", Map.of("memberId", "M001", "email", "sam.patel@example.com"))
+                .status());
+        assertTrue(get(b, "/api/me").body().get("member").isNull());
+        assertEquals(200, post(b, "/api/login", Map.of("memberId", "M001", "email", "alex.morgan@example.com"))
+                .status());
+    }
+
+    @Test
     void sessionsAreIsolatedPerBrowser() throws Exception {
         HttpClient alex = browser();
         HttpClient guest = browser();
-        post(alex, "/api/login", Map.of("memberId", "M001"));
+        post(alex, "/api/login", Map.of("memberId", "M001", "email", "Alex.Morgan@Example.com"));
         assertFalse(get(alex, "/api/me").body().get("member").isNull());
         assertTrue(get(guest, "/api/me").body().get("member").isNull());
         assertEquals("Please log in first.", get(guest, "/api/account").body().get("error").asText());
@@ -246,8 +257,9 @@ class WebServerTest {
         HttpClient b = browser();
         assertEquals("message is required.", post(b, "/api/chat", Map.of()).body().get("error").asText());
         assertEquals(400, post(b, "/api/chat", Map.of("message", "x".repeat(2001))).status());
-        assertEquals("No member with ID M999.",
-                post(b, "/api/login", Map.of("memberId", "M999")).body().get("error").asText());
+        assertEquals("That member ID and email don't match an account.",
+                post(b, "/api/login", Map.of("memberId", "M999", "email", "x@example.com")).body()
+                        .get("error").asText());
     }
 
     @Test

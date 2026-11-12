@@ -26,10 +26,11 @@
         <form id="form-signin" class="card">
           <h2>Sign in</h2>
           <label>Member ID <input name="memberId" placeholder="e.g. M001" required autocomplete="off"></label>
+          <label>Email on the account <input name="email" type="email" placeholder="not needed for librarians" autocomplete="off"></label>
           <label id="passcode-row" class="hidden">Librarian passcode <input name="passcode" type="password" autocomplete="off"></label>
           <button type="submit">Sign in</button>
           <p class="error" id="signin-error"></p>
-          <p class="muted small">Sample accounts: M001 (Alex, standard), M002 (Sam, student)<span id="lib-hint">, LIB001 (librarian, passcode required)</span>.</p>
+          <p class="muted small">Sample accounts: M001 with alex.morgan@example.com (standard), M002 with sam.patel@example.com (student)<span id="lib-hint">, LIB001 (librarian, passcode required)</span>.</p>
         </form>
         <form id="form-register" class="card wide">
           <h2>New member? Register</h2>

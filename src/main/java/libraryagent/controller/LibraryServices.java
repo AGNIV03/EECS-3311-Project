@@ -28,7 +28,7 @@ public final class LibraryServices implements AutoCloseable {
         this.catalog = new CatalogService(store.books(), store.genres());
         this.members = new MemberService(store.members(), store.genres());
         this.circulation = new CirculationService(store.books(), store.loans(), store.reservations(),
-                notifications, clock);
+                notifications, clock, store.database()::writeTogether);
         this.readingLists = new ReadingListService(store.readingLists());
         this.feedback = new FeedbackService(store.feedback(), store.members(), store.loans(), clock);
     }

@@ -9,6 +9,7 @@ services:
     environment:
       DB_PATH: /app/data/library.db
       WEB_PORT: "8080"
+      TZ: ${TZ:-America/Toronto}   # due dates and the daily budget reset use this zone
       TRUST_PROXY: "true"     # client IPs come from Caddy's X-Forwarded-For
       COOKIE_SECURE: "true"   # the site is only served over HTTPS
     volumes:

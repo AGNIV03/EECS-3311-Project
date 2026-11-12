@@ -74,7 +74,7 @@ public class PromptComposer {
         if (previousResults.isEmpty()) {
             return message;
         }
-        StringBuilder sb = new StringBuilder(message).append("\n\n[Books shown in my previous answer]");
+        StringBuilder sb = new StringBuilder(message).append("\n\n[Books most recently shown to me]");
         for (int i = 0; i < previousResults.size(); i++) {
             Book b = previousResults.get(i);
             sb.append('\n').append(i + 1).append(". ").append(b.getTitle()).append(" by ").append(b.getAuthor())

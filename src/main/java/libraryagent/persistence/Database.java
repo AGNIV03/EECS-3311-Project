@@ -99,6 +99,32 @@ public final class Database implements AutoCloseable {
         return query(sql, rs -> rs.getLong(1), params).get(0);
     }
 
+    /**
+     * Commits everything the work writes as one unit, so a crash partway through leaves none of
+     * it on disk. Unlike {@link #inTransaction}, rows written before an exception are kept:
+     * the in-memory objects already carry those changes, and the database must match them.
+     * Nested calls join the outer unit.
+     */
+    public <T> T writeTogether(java.util.function.Supplier<T> work) {
+        try {
+            if (transactionDepth == 0) {
+                connection.setAutoCommit(false);
+            }
+            transactionDepth++;
+            try {
+                return work.get();
+            } finally {
+                transactionDepth--;
+                if (transactionDepth == 0) {
+                    connection.commit();
+                    connection.setAutoCommit(true);
+                }
+            }
+        } catch (SQLException e) {
+            throw new PersistenceException("Could not save changes", e);
+        }
+    }
+
     /** Runs the work atomically; nested calls join the outer transaction. */
     public void inTransaction(Runnable work) {
         try {

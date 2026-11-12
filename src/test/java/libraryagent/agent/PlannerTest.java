@@ -150,7 +150,7 @@ class PlannerTest {
 
         LlmRequest third = llm.requests().get(2);
         Message lastUser = third.messages().get(third.messages().size() - 2);
-        assertTrue(lastUser.text().startsWith("reserve the second one\n\n[Books shown in my previous answer]"));
+        assertTrue(lastUser.text().startsWith("reserve the second one\n\n[Books most recently shown to me]"));
         assertTrue(lastUser.text().contains("2. Dune by Frank Herbert (ISBN 9781000000006)"));
         assertEquals(7, third.messages().size(), "turn 1 (5 messages) plus the new message and session note");
     }

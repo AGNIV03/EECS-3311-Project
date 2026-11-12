@@ -106,6 +106,8 @@ The volume name is prefixed with the project folder name. Check it with `docker 
 - **Daily budget:** once the estimated spend for the day reaches `DAILY_BUDGET_USD`, chat replies say the daily budget is used up. Everything else (search, reserve, account, lists) keeps working, and the budget resets at midnight server time.
 - **Rate limits:** each visitor (IP address) can send `CHAT_LIMIT_PER_MINUTE` messages per minute and `CHAT_LIMIT_PER_HOUR` per hour, plus 3 sign-ups per minute. Caddy replaces the client address header, so visitors can't spoof it.
 - **Size limits:** chat messages are capped at 2,000 characters and request bodies at 16 KB.
+- **Member sign-in** on the website needs the member ID and the email the account was registered with, because member IDs are sequential. Sign-in attempts are limited to 10 per minute per visitor.
+- **Time zone:** due dates and the daily budget reset use `TZ` (default `America/Toronto`).
 - **Librarian functions** (desk checkout and check-in, overdue list, adding books) require `LIBRARIAN_PASSCODE`.
 - **Sessions** are per-browser cookies (HttpOnly, SameSite=Strict, Secure) and expire after 2 idle hours.
 

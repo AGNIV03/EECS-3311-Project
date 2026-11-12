@@ -253,6 +253,7 @@ The same application also runs as a web server with a JSON API, for hosting on a
   - per-visitor chat limits
   - message size limits
   - librarian sign-in only with `LIBRARIAN_PASSCODE`
+  - member sign-in needs the member ID and the email on the account (the desktop GUI and CLI ask for the ID only)
 - Open `http://localhost:8080` for the browser interface. It has the same four tabs as the GUI. The JSON API is under `/api/...` (for example `/api/health`).
 
 To host it on a VPS with HTTPS on your own domain (Docker and Caddy), follow **[deploy/DEPLOY.md](deploy/DEPLOY.md)**.

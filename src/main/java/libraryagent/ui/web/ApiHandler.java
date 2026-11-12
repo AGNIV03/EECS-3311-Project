@@ -249,8 +249,16 @@ final class ApiHandler implements HttpHandler {
 
     private Map<String, Object> login(WebSession s, Map<String, Object> body) {
         String memberId = text(body, "memberId");
-        Member member = sessions.services().members().requireMember(memberId);
-        if (member.isLibrarian()) {
+        Member member = sessions.services().members().findById(memberId).orElse(null);
+        if (member == null || !member.isLibrarian()) {
+            // Member IDs are sequential and easy to guess, so the public site also asks for the
+            // email the account was registered with. One message for both failures, so the
+            // reply does not reveal which member IDs exist.
+            String email = optionalText(body, "email").strip();
+            if (member == null || email.isEmpty() || !member.getEmail().equalsIgnoreCase(email)) {
+                throw new ApiError(403, "That member ID and email don't match an account.");
+            }
+        } else {
             String expected = config.librarianPasscode()
                     .orElseThrow(() -> new ApiError(403, "Librarian sign-in is disabled on this site."));
             String given = optionalText(body, "passcode");

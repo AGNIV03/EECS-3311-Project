@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 import libraryagent.domain.Book;
 import libraryagent.domain.LibraryException;
 import libraryagent.domain.Loan;
@@ -28,6 +29,11 @@ import libraryagent.persistence.ReservationRepository;
  */
 public class CirculationService {
 
+    /** Groups the database writes of one operation. */
+    public interface UnitOfWork {
+        <T> T run(Supplier<T> work);
+    }
+
     /** Maximum waiting-or-ready reservations per member. */
     public static final int MAX_ACTIVE_HOLDS = 5;
 
@@ -36,9 +42,25 @@ public class CirculationService {
     private final ReservationRepository reservations;
     private final NotificationService notifications;
     private final Clock clock;
+    private final UnitOfWork unitOfWork;
 
     public CirculationService(BookRepository books, LoanRepository loans, ReservationRepository reservations,
                               NotificationService notifications, Clock clock) {
+        this(books, loans, reservations, notifications, clock, new UnitOfWork() {
+            @Override
+            public <T> T run(Supplier<T> work) {
+                return work.get();
+            }
+        });
+    }
+
+    /**
+     * @param unitOfWork saves everything one operation writes (copy, reservation, loan) together,
+     *                   so a crash cannot leave, say, a copy on loan with no loan record
+     */
+    public CirculationService(BookRepository books, LoanRepository loans, ReservationRepository reservations,
+                              NotificationService notifications, Clock clock, UnitOfWork unitOfWork) {
+        this.unitOfWork = unitOfWork;
         this.books = books;
         this.loans = loans;
         this.reservations = reservations;
@@ -53,6 +75,10 @@ public class CirculationService {
      * (status WAITING) when every copy is out.
      */
     public Reservation reserve(Member member, Book book) {
+        return unitOfWork.run(() -> reserveUnit(member, book));
+    }
+
+    private Reservation reserveUnit(Member member, Book book) {
         expireReadyHolds();
         if (reservations.findActive(member, book).isPresent()) {
             throw new LibraryException("You already have a reservation for \"" + book.getTitle() + "\".");
@@ -80,6 +106,13 @@ public class CirculationService {
 
     /** Cancels a waiting or ready reservation; a released copy goes to the next member in line. */
     public void cancelReservation(Reservation reservation) {
+        unitOfWork.run(() -> {
+            cancelReservationUnit(reservation);
+            return null;
+        });
+    }
+
+    private void cancelReservationUnit(Reservation reservation) {
         ReservationStatus before = reservation.getStatus();
         reservation.cancel();
         if (before == ReservationStatus.WAITING) {
@@ -95,6 +128,10 @@ public class CirculationService {
 
     /** Expires ready holds not collected within the pickup window and passes the copy on. */
     public List<Reservation> expireReadyHolds() {
+        return unitOfWork.run(() -> expireReadyHoldsUnit());
+    }
+
+    private List<Reservation> expireReadyHoldsUnit() {
         LocalDate today = today();
         List<Reservation> expired = new ArrayList<>();
         for (Reservation r : reservations.findByStatus(ReservationStatus.READY)) {
@@ -115,6 +152,10 @@ public class CirculationService {
 
     /** Lends a copy to a member, enforcing the borrowing limit. */
     public Loan checkOut(Member member, BookCopy copy) {
+        return unitOfWork.run(() -> checkOutUnit(member, copy));
+    }
+
+    private Loan checkOutUnit(Member member, BookCopy copy) {
         expireReadyHolds();
         if (openLoans(member).size() >= member.getBorrowLimit()) {
             throw new LibraryException(member.getName() + " has reached the borrowing limit of "
@@ -164,6 +205,13 @@ public class CirculationService {
      *                      being handed back; holds collected by earlier checkouts are untouched.
      */
     public void undoCheckOut(Loan loan, Reservation collectedHold) {
+        unitOfWork.run(() -> {
+            undoCheckOutUnit(loan, collectedHold);
+            return null;
+        });
+    }
+
+    private void undoCheckOutUnit(Loan loan, Reservation collectedHold) {
         BookCopy copy = loan.getCopy();
         if (!loan.isOpen() || loan.getRenewals() > 0 || !"On Loan".equals(copy.getState().name())) {
             throw new LibraryException("The checkout of \"" + loan.getBook().getTitle()
@@ -186,6 +234,10 @@ public class CirculationService {
      * next member in the queue and notifies them.
      */
     public Loan checkIn(String copyId) {
+        return unitOfWork.run(() -> checkInUnit(copyId));
+    }
+
+    private Loan checkInUnit(String copyId) {
         BookCopy copy = requireCopy(copyId);
         Loan loan = loans.findOpenByCopy(copy)
                 .orElseThrow(() -> new LibraryException("Copy " + copy.getCopyId() + " is not on loan."));
@@ -201,6 +253,13 @@ public class CirculationService {
 
     /** Reopens a loan whose return is being undone; refused once the copy was passed on. */
     public void undoCheckIn(Loan loan, boolean wasOverdue) {
+        unitOfWork.run(() -> {
+            undoCheckInUnit(loan, wasOverdue);
+            return null;
+        });
+    }
+
+    private void undoCheckInUnit(Loan loan, boolean wasOverdue) {
         BookCopy copy = loan.getCopy();
         if (!copy.isAvailable()) {
             throw new LibraryException("The return of \"" + loan.getBook().getTitle()

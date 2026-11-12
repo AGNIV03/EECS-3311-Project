@@ -11,6 +11,7 @@ services:
     environment:
       DB_PATH: /app/data/library.db
       WEB_PORT: "8080"
+      TZ: ${TZ:-America/Toronto}   # due dates and the daily budget reset use this zone
       TRUST_PROXY: "true"                  # only cloudflared can reach the port
       CLIENT_IP_HEADER: CF-Connecting-IP   # set by Cloudflare; visitors cannot spoof it
       COOKIE_SECURE: "true"                # Cloudflare serves the site over HTTPS
