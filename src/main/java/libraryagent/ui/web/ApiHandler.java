@@ -397,7 +397,7 @@ final class ApiHandler implements HttpHandler {
 
     private String clientIp(HttpExchange exchange) {
         if (config.trustProxy()) {
-            String forwarded = exchange.getRequestHeaders().getFirst("X-Forwarded-For");
+            String forwarded = exchange.getRequestHeaders().getFirst(config.clientIpHeader());
             if (forwarded != null && !forwarded.isBlank()) {
                 return forwarded.split(",")[0].strip();
             }

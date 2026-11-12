@@ -120,3 +120,17 @@ Visitors share one demo library, so one visitor's reservations are visible to ot
 | Chat says the assistant is not configured | `ANTHROPIC_API_KEY` missing or still the placeholder in `.env` |
 | "Librarian sign-in is disabled on this site." | `LIBRARIAN_PASSCODE` is blank |
 | Build fails with out-of-memory | Add swap or use a VPS with 2 GB RAM |
+
+## 10. Alternative: Cloudflare Tunnel instead of Caddy
+
+If the server already runs `cloudflared`, skip Caddy, DNS records and the firewall steps (2 and 4). `DOMAIN` in `.env` is not used.
+
+```bash
+cd /opt/library-agent
+docker compose -f docker-compose.tunnel.yml up -d --build
+curl http://127.0.0.1:8092/api/health      # {"status":"ok"}
+```
+
+The app listens only on `127.0.0.1:8092` on the server (set `HOST_PORT` in `.env` to change it). In the Cloudflare dashboard, add a **published application route** (public hostname) to the tunnel with service type **HTTP** and URL `localhost:8092`.
+
+Visitors are told apart for the rate limits by Cloudflare's `CF-Connecting-IP` header. Use the same `-f docker-compose.tunnel.yml` option with every command in section 7.

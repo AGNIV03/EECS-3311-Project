@@ -157,6 +157,36 @@ class WebServerTest {
                 post(browser(), "/api/login", Map.of("memberId", "LIB001")).body().get("error").asText());
     }
 
+    private int chatFrom(String header, String address) throws Exception {
+        return HttpClient.newHttpClient().send(HttpRequest.newBuilder(uri("/api/chat"))
+                        .header("Content-Type", "application/json").header(header, address)
+                        .POST(HttpRequest.BodyPublishers.ofString("{\"message\":\"hi\"}")).build(),
+                HttpResponse.BodyHandlers.ofString()).statusCode();
+    }
+
+    @Test
+    void behindCloudflareVisitorsAreToldApartByTheConfiguredHeader() throws Exception {
+        tearDown();
+        start(Map.of("CHAT_LIMIT_PER_MINUTE", "1", "TRUST_PROXY", "true", "CLIENT_IP_HEADER", "CF-Connecting-IP"),
+                new BigDecimal("1.00"));
+        llm.reply(FakeLLMClient.text("one")).reply(FakeLLMClient.text("two"));
+
+        assertEquals(200, chatFrom("CF-Connecting-IP", "203.0.113.5"));
+        assertEquals(200, chatFrom("CF-Connecting-IP", "203.0.113.6"));
+        assertEquals(429, chatFrom("CF-Connecting-IP", "203.0.113.5"));
+    }
+
+    @Test
+    void forwardedForIsIgnoredWhenAnotherHeaderIsConfigured() throws Exception {
+        tearDown();
+        start(Map.of("CHAT_LIMIT_PER_MINUTE", "1", "TRUST_PROXY", "true", "CLIENT_IP_HEADER", "CF-Connecting-IP"),
+                new BigDecimal("1.00"));
+        llm.reply(FakeLLMClient.text("one"));
+
+        assertEquals(200, chatFrom("X-Forwarded-For", "198.51.100.1"));
+        assertEquals(429, chatFrom("X-Forwarded-For", "198.51.100.2"));
+    }
+
     @Test
     void chatIsRateLimitedPerVisitor() throws Exception {
         HttpClient b = browser();

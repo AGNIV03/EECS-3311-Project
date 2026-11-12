@@ -1,0 +1,23 @@
+# Library Agent web version behind a Cloudflare Tunnel (no Caddy, no public ports).
+# The app listens only on 127.0.0.1:${HOST_PORT:-8092} of the server; point the tunnel's
+# published application route at http://localhost:8092. See deploy/DEPLOY.md, section 10.
+# Usage: docker compose -f docker-compose.tunnel.yml up -d --build
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_PATH: /app/data/library.db
+      WEB_PORT: "8080"
+      TRUST_PROXY: "true"                  # only cloudflared can reach the port
+      CLIENT_IP_HEADER: CF-Connecting-IP   # set by Cloudflare; visitors cannot spoof it
+      COOKIE_SECURE: "true"                # Cloudflare serves the site over HTTPS
+    volumes:
+      - library-data:/app/data
+    ports:
+      - "127.0.0.1:${HOST_PORT:-8092}:8080"
+
+volumes:
+  library-data:

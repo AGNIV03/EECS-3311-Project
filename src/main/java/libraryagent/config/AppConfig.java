@@ -29,6 +29,7 @@ public final class AppConfig {
     private final int chatPerHour;
     private final boolean trustProxy;
     private final boolean cookieSecure;
+    private final String clientIpHeader;
     private final String librarianPasscode;
 
     AppConfig(Map<String, String> fileValues, Map<String, String> environment) {
@@ -43,6 +44,7 @@ public final class AppConfig {
         this.chatPerHour = parsePositiveInt(read("CHAT_LIMIT_PER_HOUR", fileValues, environment, "40"), 40);
         this.trustProxy = Boolean.parseBoolean(read("TRUST_PROXY", fileValues, environment, "false"));
         this.cookieSecure = Boolean.parseBoolean(read("COOKIE_SECURE", fileValues, environment, "false"));
+        this.clientIpHeader = read("CLIENT_IP_HEADER", fileValues, environment, "X-Forwarded-For");
         this.librarianPasscode = read("LIBRARIAN_PASSCODE", fileValues, environment, "");
     }
 
@@ -74,9 +76,17 @@ public final class AppConfig {
         return chatPerHour;
     }
 
-    /** Use X-Forwarded-For for the client address (only behind a trusted reverse proxy). */
+    /** Take the client address from {@link #clientIpHeader()} (only behind a trusted reverse proxy). */
     public boolean trustProxy() {
         return trustProxy;
+    }
+
+    /**
+     * Header the reverse proxy sets to the visitor's address: {@code X-Forwarded-For} (Caddy, the
+     * default) or {@code CF-Connecting-IP} (Cloudflare). Only read when {@link #trustProxy()} is on.
+     */
+    public String clientIpHeader() {
+        return clientIpHeader;
     }
 
     /** Mark session cookies Secure (when served over HTTPS). */
