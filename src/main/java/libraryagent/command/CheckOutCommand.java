@@ -2,6 +2,7 @@ package libraryagent.command;
 
 import libraryagent.domain.Loan;
 import libraryagent.domain.Member;
+import libraryagent.domain.Reservation;
 import libraryagent.domain.copy.BookCopy;
 import libraryagent.service.CirculationService;
 
@@ -12,6 +13,7 @@ public class CheckOutCommand implements Command {
     private final Member member;
     private final BookCopy copy;
     private Loan loan;
+    private Reservation holdBefore;
 
     public CheckOutCommand(CirculationService circulation, Member member, BookCopy copy) {
         this.circulation = circulation;
@@ -21,6 +23,7 @@ public class CheckOutCommand implements Command {
 
     @Override
     public CommandResult execute() {
+        holdBefore = circulation.activeHold(member, copy.getBook()).orElse(null);
         loan = circulation.checkOut(member, copy);
         return CommandResult.ok("Checked out \"" + copy.getBook().getTitle() + "\" (copy " + copy.getCopyId()
                 + ") to " + member.getName() + ". Due " + loan.getDueDate() + ".");
@@ -28,7 +31,7 @@ public class CheckOutCommand implements Command {
 
     @Override
     public void undo() {
-        circulation.undoCheckOut(loan);
+        circulation.undoCheckOut(loan, holdBefore);
     }
 
     @Override

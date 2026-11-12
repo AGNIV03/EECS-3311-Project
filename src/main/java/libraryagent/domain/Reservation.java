@@ -55,6 +55,12 @@ public class Reservation {
         status = ReservationStatus.READY;
     }
 
+    /** As {@link #reopen()}, holding the given copy (the one that was just handed back). */
+    public void reopen(BookCopy heldCopy) {
+        reopen();
+        this.copy = Objects.requireNonNull(heldCopy);
+    }
+
     public void cancel() {
         if (!isActive()) {
             throw new LibraryException("This reservation is already " + status.name().toLowerCase() + ".");

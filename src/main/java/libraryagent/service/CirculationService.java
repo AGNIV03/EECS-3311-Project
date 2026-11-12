@@ -146,21 +146,34 @@ public class CirculationService {
         reservations.save(r);
     }
 
-    /** Reverses a checkout made moments ago (used by undo). */
+    /** The member's waiting or ready hold on a book, if any. */
+    public Optional<Reservation> activeHold(Member member, Book book) {
+        return reservations.findActive(member, book);
+    }
+
+    /** Reverses a checkout that settled no hold. */
     public void undoCheckOut(Loan loan) {
+        undoCheckOut(loan, null);
+    }
+
+    /**
+     * Reverses a checkout made moments ago (used by undo).
+     *
+     * @param collectedHold the member's hold on the book as it was just before the checkout, or
+     *                      null. If the checkout collected it, the hold is restored on the copy
+     *                      being handed back; holds collected by earlier checkouts are untouched.
+     */
+    public void undoCheckOut(Loan loan, Reservation collectedHold) {
         BookCopy copy = loan.getCopy();
         if (!loan.isOpen() || loan.getRenewals() > 0 || !"On Loan".equals(copy.getState().name())) {
             throw new LibraryException("The checkout of \"" + loan.getBook().getTitle()
                     + "\" can no longer be undone.");
         }
         copy.checkIn();
-        Optional<Reservation> fulfilled = reservations.findByMember(loan.getMember()).stream()
-                .filter(r -> r.getStatus() == ReservationStatus.FULFILLED && copy.equals(r.getCopy()))
-                .reduce((first, second) -> second);
-        if (fulfilled.isPresent()) {
-            fulfilled.get().reopen();
+        if (collectedHold != null && collectedHold.getStatus() == ReservationStatus.FULFILLED) {
+            collectedHold.reopen(copy);
             copy.reserve(loan.getMember().getMemberId());
-            reservations.save(fulfilled.get());
+            reservations.save(collectedHold);
         } else {
             promoteNextHold(copy);
         }
@@ -222,7 +235,13 @@ public class CirculationService {
         return loan;
     }
 
+    /** Reverses a renewal; refused if the loan was returned or changed since that renewal. */
     public void undoRenew(Loan loan, LocalDate previousDueDate) {
+        if (!loan.isOpen() || loan.getRenewals() == 0
+                || !loan.getDueDate().equals(previousDueDate.plusDays(Loan.LOAN_DAYS))) {
+            throw new LibraryException("The renewal of \"" + loan.getBook().getTitle()
+                    + "\" can no longer be undone.");
+        }
         loan.undoRenew(previousDueDate);
         loans.save(loan);
     }
@@ -267,6 +286,7 @@ public class CirculationService {
 
     /** Waiting and ready reservations. */
     public List<Reservation> holdsFor(Member member) {
+        expireReadyHolds();
         return reservations.findByMember(member).stream().filter(Reservation::isActive).toList();
     }
 

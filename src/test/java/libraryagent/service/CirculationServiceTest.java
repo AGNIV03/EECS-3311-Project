@@ -32,6 +32,7 @@ class CirculationServiceTest {
     private static final String HOBBIT = "9781000000001";
     private static final String DUNE = "9781000000006";
     private static final String PERSUASION = "9781000000018";
+    private static final String EARTHSEA = "9781000000002";
 
     private ServiceTestSupport.MutableClock clock;
     private DataStore store;
@@ -190,10 +191,51 @@ class CirculationServiceTest {
     void undoCheckoutRestoresTheHold() {
         Reservation r = circulation.reserve(alex, book(PERSUASION));
         Loan loan = circulation.checkOut(alex, r.getCopy());
-        circulation.undoCheckOut(loan);
+        circulation.undoCheckOut(loan, r);
         assertEquals(ReservationStatus.READY, r.getStatus());
         assertEquals("Reserved", r.getCopy().getState().name());
         assertTrue(store.loans().findById(loan.getLoanId()).isEmpty());
+    }
+
+    @Test
+    void undoOfADirectCheckoutDoesNotReviveAnEarlierHold() {
+        Reservation earlier = circulation.reserve(alex, book(PERSUASION));
+        BookCopy copy = earlier.getCopy();
+        circulation.checkOut(alex, copy);
+        circulation.checkIn(copy.getCopyId());
+
+        Loan direct = circulation.checkOut(alex, copy);
+        circulation.undoCheckOut(direct, null);
+
+        assertEquals(ReservationStatus.FULFILLED, earlier.getStatus());
+        assertTrue(copy.isAvailable());
+        assertTrue(circulation.holdsFor(alex).isEmpty());
+    }
+
+    @Test
+    void undoAfterCollectingADifferentCopyKeepsTheHold() {
+        Reservation hold = circulation.reserve(alex, book(EARTHSEA));
+        BookCopy other = book(EARTHSEA).getCopies().stream()
+                .filter(c -> !c.equals(hold.getCopy())).findFirst().orElseThrow();
+
+        Loan loan = circulation.checkOut(alex, other);
+        assertEquals(ReservationStatus.FULFILLED, hold.getStatus());
+        circulation.undoCheckOut(loan, hold);
+
+        assertEquals(ReservationStatus.READY, hold.getStatus());
+        assertEquals(other, hold.getCopy());
+        assertEquals("Reserved", other.getState().name());
+        assertEquals(1, circulation.holdsFor(alex).size());
+    }
+
+    @Test
+    void uncollectedHoldDisappearsFromTheAccountAfterThePickupWindow() {
+        Reservation hold = circulation.reserve(alex, book(PERSUASION));
+        clock.advanceDays(Reservation.PICKUP_DAYS + 1);
+
+        assertTrue(circulation.holdsFor(alex).isEmpty());
+        assertEquals(ReservationStatus.EXPIRED, hold.getStatus());
+        assertTrue(hold.getCopy().isAvailable());
     }
 
     // ---- Return --------------------------------------------------------------------------
@@ -255,6 +297,29 @@ class CirculationServiceTest {
         assertEquals(before.plusDays(21), hobbit.getDueDate());
         circulation.undoRenew(hobbit, before);
         assertEquals(before, hobbit.getDueDate());
+    }
+
+    @Test
+    void renewalUndoIsRefusedOnceTheLoanChangedAgain() {
+        Loan hobbit = openLoan(sam, HOBBIT);
+        var first = hobbit.getDueDate();
+        circulation.renew(hobbit);
+        circulation.renew(hobbit);
+
+        assertThrows(LibraryException.class, () -> circulation.undoRenew(hobbit, first));
+        assertEquals(first.plusDays(42), hobbit.getDueDate());
+        assertEquals(2, hobbit.getRenewals());
+    }
+
+    @Test
+    void renewalUndoIsRefusedAfterTheBookWasReturned() {
+        Loan hobbit = openLoan(sam, HOBBIT);
+        var before = hobbit.getDueDate();
+        circulation.renew(hobbit);
+        circulation.checkIn(hobbit.getCopy().getCopyId());
+
+        assertThrows(LibraryException.class, () -> circulation.undoRenew(hobbit, before));
+        assertEquals(before.plusDays(21), hobbit.getDueDate());
     }
 
     @Test
