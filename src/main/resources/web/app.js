@@ -78,6 +78,7 @@ async function loadMe() {
   state.me = me.member;
   state.assistant = me.assistantAvailable;
   state.librarianSignIn = me.librarianSignIn;
+  state.librarianPasscode = me.librarianPasscode || null;
   renderHeader();
 }
 
@@ -96,6 +97,9 @@ function renderHeader() {
   document.querySelectorAll(".needs-librarian").forEach((n) => n.classList.toggle("hidden", !(signedIn && state.me.librarian)));
   $("passcode-row").classList.toggle("hidden", !state.librarianSignIn);
   $("lib-hint").classList.toggle("hidden", !state.librarianSignIn);
+  $("lib-hint").textContent = state.librarianPasscode
+    ? ", LIB001 (librarian, passcode: " + state.librarianPasscode + ")"
+    : ", LIB001 (librarian, passcode required)";
   const chatOn = state.assistant;
   $("chat-message").disabled = !chatOn;
   $("chat-send").disabled = !chatOn;

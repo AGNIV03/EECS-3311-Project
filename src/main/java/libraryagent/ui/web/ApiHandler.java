@@ -244,6 +244,10 @@ final class ApiHandler implements HttpHandler {
         view.put("member", s.controller.currentMember().map(WebViews::member).orElse(null));
         view.put("assistantAvailable", s.controller.assistantAvailable());
         view.put("librarianSignIn", config.librarianPasscode().isPresent());
+        if (config.showLibrarianPasscode()) {
+            // An open demo: the site owner chose to publish the passcode on the sign-in screen.
+            view.put("librarianPasscode", config.librarianPasscode().orElse(null));
+        }
         return view;
     }
 

@@ -108,6 +108,7 @@ The volume name is prefixed with the project folder name. Check it with `docker 
 - **Size limits:** chat messages are capped at 2,000 characters and request bodies at 16 KB.
 - **Member sign-in** on the website needs the member ID and the email the account was registered with, because member IDs are sequential. Sign-in attempts are limited to 10 per minute per visitor.
 - **Time zone:** due dates and the daily budget reset use `TZ` (default `America/Toronto`).
+- **Open demo:** `SHOW_LIBRARIAN_PASSCODE=true` prints the passcode on the sign-in screen, so any visitor can act as the librarian.
 - **Librarian functions** (desk checkout and check-in, overdue list, adding books) require `LIBRARIAN_PASSCODE`.
 - **Sessions** are per-browser cookies (HttpOnly, SameSite=Strict, Secure) and expire after 2 idle hours.
 

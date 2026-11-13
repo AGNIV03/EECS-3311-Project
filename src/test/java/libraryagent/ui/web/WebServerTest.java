@@ -165,6 +165,14 @@ class WebServerTest {
     }
 
     @Test
+    void librarianPasscodeIsPublishedOnlyWhenTheSiteOptsIn() throws Exception {
+        assertFalse(get(browser(), "/api/me").body().has("librarianPasscode"));
+        tearDown();
+        start(Map.of("LIBRARIAN_PASSCODE", "shelf-42", "SHOW_LIBRARIAN_PASSCODE", "true"), new BigDecimal("1.00"));
+        assertEquals("shelf-42", get(browser(), "/api/me").body().get("librarianPasscode").asText());
+    }
+
+    @Test
     void memberSignInNeedsTheAccountsEmail() throws Exception {
         HttpClient b = browser();
         assertEquals(403, post(b, "/api/login", Map.of("memberId", "M001")).status());

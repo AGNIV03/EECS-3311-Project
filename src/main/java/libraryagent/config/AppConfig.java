@@ -31,6 +31,7 @@ public final class AppConfig {
     private final boolean cookieSecure;
     private final String clientIpHeader;
     private final String librarianPasscode;
+    private final boolean showLibrarianPasscode;
 
     AppConfig(Map<String, String> fileValues, Map<String, String> environment) {
         this.apiKey = read("ANTHROPIC_API_KEY", fileValues, environment, "");
@@ -46,6 +47,8 @@ public final class AppConfig {
         this.cookieSecure = Boolean.parseBoolean(read("COOKIE_SECURE", fileValues, environment, "false"));
         this.clientIpHeader = read("CLIENT_IP_HEADER", fileValues, environment, "X-Forwarded-For");
         this.librarianPasscode = read("LIBRARIAN_PASSCODE", fileValues, environment, "");
+        this.showLibrarianPasscode =
+                Boolean.parseBoolean(read("SHOW_LIBRARIAN_PASSCODE", fileValues, environment, "false"));
     }
 
     /** Loads {@code .env} from the working directory, overridden by the process environment. */
@@ -95,6 +98,11 @@ public final class AppConfig {
     }
 
     /** Passcode for librarian sign-in on the web version; empty disables librarian sign-in there. */
+    /** Show the librarian passcode on the website's sign-in screen (open demo sites only). */
+    public boolean showLibrarianPasscode() {
+        return showLibrarianPasscode;
+    }
+
     public Optional<String> librarianPasscode() {
         return librarianPasscode.isBlank() ? Optional.empty() : Optional.of(librarianPasscode);
     }
