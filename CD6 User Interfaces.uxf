@@ -4,119 +4,228 @@
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>420</x>
-      <y>91</y>
-      <w>140</w>
-      <h>49</h>
+      <x>14</x>
+      <y>14</y>
+      <w>168</w>
+      <h>84</h>
     </coordinates>
     <panel_attributes>LibraryApp
 --
+-services: LibraryServices
 --
-+start(stage: Stage): void</panel_attributes>
++start(stage: Stage): void
++stop(): void
+_+main(args: String[]): void_</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>686</x>
-      <y>98</y>
-      <w>91</w>
-      <h>42</h>
+      <x>14</x>
+      <y>147</y>
+      <w>238</w>
+      <h>105</h>
+    </coordinates>
+    <panel_attributes>Gui
+--
+-dataLock: Lock
+--
+~data(action: Supplier&lt;T&gt;): T
+~dataRun(action: Runnable): void
+_~background(work, onSuccess, onError): void_
+_~error(message: String): void_
+_~info(message: String): void_</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>308</x>
+      <y>14</y>
+      <w>224</w>
+      <h>245</h>
     </coordinates>
     <panel_attributes>MainWindow
 --
--tabs: TabPane</panel_attributes>
+-tabs: TabPane
+-user: Label
+-notices, undo, signOut: Button
+-status: Label
+-pendingNotices: List&lt;String&gt;
+--
+~showStart(): void
+~showMain(): void
+~onSignedIn(member: Member): void
+~memberChangedInChat(member: Member): void
+~signOut(): void
+~selectTab(name: String): void
+~askInChat(message: String): void
+~refreshAll(): void
+~reserve(book: Book): void
+~setStatus(message: String): void
+-undo(): void
+-showNotices(): void
+-updateHeader(): void
++onEvent(event: LibraryEvent): void</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>420</x>
-      <y>231</y>
-      <w>168</w>
-      <h>91</h>
+      <x>14</x>
+      <y>329</y>
+      <w>154</w>
+      <h>70</h>
+    </coordinates>
+    <panel_attributes>StartView
+--
+--
+-signInCard(): VBox
+-registerCard(): VBox
+_-card(children: Node...): VBox_</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>196</x>
+      <y>329</y>
+      <w>196</w>
+      <h>133</h>
     </coordinates>
     <panel_attributes>CatalogView
 --
+-keywords: TextField
+-genre: ComboBox&lt;String&gt;
+-maxPages: TextField
+-results: TableView&lt;Book&gt;
+-recommended: ListView&lt;Book&gt;
 --
-+search(): void
-+reserveSelected(): void
-+showRecommendations(): void
-+askAboutSelected(): void</panel_attributes>
+~refresh(): void
+-search(announce: boolean): void
+-showDetail(book: Book): void
+-availabilityText(book: Book): String</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>630</x>
-      <y>231</y>
-      <w>133</w>
-      <h>98</h>
+      <x>448</x>
+      <y>329</y>
+      <w>266</w>
+      <h>112</h>
     </coordinates>
     <panel_attributes>LibrarianView
 --
+-overdue: TableView&lt;Loan&gt;
+-deskResult: Label
 --
-+addBook(): void
-+suggestGenres(): void
-+checkOutCopy(): void
-+checkInCopy(): void
-+showOverdue(): void</panel_attributes>
+~refresh(): void
+-deskPane(): VBox
+-overduePane(): VBox
+-addBookPane(): VBox
+-desk(result: CommandResult, clear: TextField): void</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>805</x>
-      <y>231</y>
-      <w>245</w>
-      <h>77</h>
+      <x>742</x>
+      <y>329</y>
+      <w>238</w>
+      <h>168</h>
     </coordinates>
     <panel_attributes>ChatView
 --
+-messages: VBox
+-input: TextField
+-send: Button
+-busy: boolean
 --
-+sendMessage(): void
-+showResponse(response: AgentResponse): void
+~clear(): void
+~send(text: String): void
+~isBusy(): boolean
+-showReply(response: AgentResponse): void
+-bookCard(book: Book): HBox
+-addBubble(text: String, style: String): Label
+-setBusy(busy: boolean): void
 +onEvent(event: LibraryEvent): void</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>1092</x>
-      <y>231</y>
-      <w>189</w>
-      <h>126</h>
+      <x>1008</x>
+      <y>329</y>
+      <w>196</w>
+      <h>189</h>
     </coordinates>
     <panel_attributes>AccountView
 --
+-summary: Label
+-tracking: CheckBox
+-loans: TableView&lt;Loan&gt;
+-holds: TableView&lt;HoldStatus&gt;
+-lists: ListView&lt;ReadingList&gt;
+-listBooks: ListView&lt;Book&gt;
+-history: TableView&lt;Loan&gt;
 --
-+showLoans(): void
-+showHolds(): void
-+showReadingLists(): void
-+renewSelected(): void
-+rateBook(): void
-+toggleTracking(): void
+~refresh(): void
+-readingListsPane(): HBox
+-draggableBookCell(): ListCell&lt;Book&gt;
+-moveSelected(delta: int): void
+-showList(list: ReadingList): void
+-act(result: CommandResult): void
 +onEvent(event: LibraryEvent): void</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>658</x>
-      <y>511</y>
-      <w>91</w>
-      <h>28</h>
+      <x>322</x>
+      <y>560</y>
+      <w>238</w>
+      <h>133</h>
     </coordinates>
-    <panel_attributes>AgentController</panel_attributes>
+    <panel_attributes>«Facade»
+AgentController
+--
+--
++assistantAvailable(): boolean
++chat(message: String): AgentResponse
++login(memberId: String): Member
++logout(): void
++currentMember(): Optional&lt;Member&gt;
++subscribe(listener: LibraryEventListener): void
++undoLast(): String
+... catalogue, loan, account and list operations</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>1120</x>
-      <y>497</y>
-      <w>189</w>
-      <h>63</h>
+      <x>56</x>
+      <y>616</y>
+      <w>182</w>
+      <h>91</h>
+    </coordinates>
+    <panel_attributes>SessionContext
+--
+-sessionId: String
+-currentMember: Member
+-history: CommandHistory
+--
++login(member: Member): void
++logout(): void</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1050</x>
+      <y>560</y>
+      <w>196</w>
+      <h>56</h>
     </coordinates>
     <panel_attributes>«interface»
 /LibraryEventListener/
@@ -128,273 +237,430 @@
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>644</x>
-      <y>651</y>
-      <w>147</w>
-      <h>63</h>
-    </coordinates>
-    <panel_attributes>CliApp
---
---
-_+main(args: String[]): void_
-+repl(): void</panel_attributes>
-    <additional_attributes/>
-  </element>
-  <element>
-    <id>UMLClass</id>
-    <coordinates>
-      <x>420</x>
-      <y>651</y>
-      <w>154</w>
-      <h>49</h>
+      <x>28</x>
+      <y>763</y>
+      <w>210</w>
+      <h>70</h>
     </coordinates>
     <panel_attributes>CliCommandParser
 --
+_-COMMANDS: Map&lt;String, Shape&gt;_
 --
-+parse(line: String): CliAction</panel_attributes>
++parse(line: String): CliAction
+_~tokenize(line: String): List&lt;String&gt;_</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>420</x>
-      <y>777</y>
-      <w>112</w>
-      <h>70</h>
+      <x>42</x>
+      <y>889</y>
+      <w>168</w>
+      <h>91</h>
     </coordinates>
     <panel_attributes>«record»
 CliAction
 --
--kind: String
--args: List&lt;String&gt;</panel_attributes>
++kind: String
++args: List&lt;String&gt;
+--
++arg(index: int): String
++rest(index: int): String</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
     <id>UMLClass</id>
     <coordinates>
-      <x>1148</x>
-      <y>651</y>
-      <w>189</w>
-      <h>49</h>
+      <x>336</x>
+      <y>763</y>
+      <w>210</w>
+      <h>182</h>
+    </coordinates>
+    <panel_attributes>CliApp
+--
+-in: BufferedReader
+-out: PrintStream
+-llmEnabled: boolean
+-verbose: boolean
+-quiet: boolean
+-lastChat: AgentResponse
+--
+_+main(args: String[]): void_
++repl(): void
++setVerbose(verbose: boolean): void
+~setQuiet(quiet: boolean): void
+~dispatch(action: CliAction): void
+~takeLastChat(): AgentResponse
+-chat(text: String): void</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>294</x>
+      <y>1001</y>
+      <w>308</w>
+      <h>126</h>
+    </coordinates>
+    <panel_attributes>CliPresenter
+--
+_~HELP: String_
+--
+_~bookLine(number: int, book: Book, a: Availability): String_
+_~bookDetails(book: Book, a: Availability): String_
+_~loanLine(loan: Loan, today: LocalDate): String_
+_~holdLine(hold: HoldStatus): String_
+_~account(summary: AccountSummary): String_
+_~readingList(list: ReadingList): String_
+_~money(amount: BigDecimal): String_</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>630</x>
+      <y>798</y>
+      <w>266</w>
+      <h>98</h>
+    </coordinates>
+    <panel_attributes>CliJsonMode
+--
+-buffer: ByteArrayOutputStream
+-capture: PrintStream
+--
++run(): void
++runSilently(action: CliAction): void
++captureStream(): PrintStream
+-describe(input, action, chat): Map&lt;String, Object&gt;</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1050</x>
+      <y>763</y>
+      <w>196</w>
+      <h>56</h>
     </coordinates>
     <panel_attributes>CliNotifier
 --
+-out: PrintStream
 --
 +onEvent(event: LibraryEvent): void</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
-    <id>UMLClass</id>
+    <id>Relation</id>
     <coordinates>
-      <x>833</x>
-      <y>651</y>
+      <x>175</x>
+      <y>35</y>
       <w>140</w>
-      <h>56</h>
+      <h>14</h>
     </coordinates>
-    <panel_attributes>SessionContext
---
--currentMember: Member
--sessionId: String</panel_attributes>
-    <additional_attributes/>
+    <panel_attributes>lt=&lt;.
+«create»</panel_attributes>
+    <additional_attributes>190.0;10.0;10.0;10.0</additional_attributes>
   </element>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>553</x>
-      <y>105</y>
-      <w>147</w>
-      <h>28</h>
+      <x>91</x>
+      <y>91</y>
+      <w>14</w>
+      <h>63</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;.
+«create»</panel_attributes>
+    <additional_attributes>10.0;80.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>245</x>
+      <y>189</y>
+      <w>70</w>
+      <h>14</h>
     </coordinates>
     <panel_attributes>lt=&lt;-</panel_attributes>
-    <additional_attributes>190.0;15.0;10.0;10.0</additional_attributes>
+    <additional_attributes>10.0;10.0;90.0;10.0</additional_attributes>
   </element>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>497</x>
-      <y>133</y>
-      <w>224</w>
-      <h>112</h>
+      <x>84</x>
+      <y>252</y>
+      <w>259</w>
+      <h>84</h>
     </coordinates>
     <panel_attributes>lt=&lt;&lt;&lt;&lt;&lt;-</panel_attributes>
-    <additional_attributes>296.0;10.0;10.0;140.0</additional_attributes>
+    <additional_attributes>360.0;10.0;10.0;110.0</additional_attributes>
   </element>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>686</x>
-      <y>133</y>
-      <w>49</w>
-      <h>112</h>
+      <x>287</x>
+      <y>252</y>
+      <w>84</w>
+      <h>84</h>
     </coordinates>
     <panel_attributes>lt=&lt;&lt;&lt;&lt;&lt;-</panel_attributes>
-    <additional_attributes>47.0;10.0;10.0;140.0</additional_attributes>
-  </element>
-  <element>
-    <id>Relation</id>
-    <coordinates>
-      <x>728</x>
-      <y>133</y>
-      <w>210</w>
-      <h>112</h>
-    </coordinates>
-    <panel_attributes>lt=&lt;&lt;&lt;&lt;&lt;-</panel_attributes>
-    <additional_attributes>10.0;10.0;277.0;140.0</additional_attributes>
-  </element>
-  <element>
-    <id>Relation</id>
-    <coordinates>
-      <x>749</x>
-      <y>133</y>
-      <w>448</w>
-      <h>112</h>
-    </coordinates>
-    <panel_attributes>lt=&lt;&lt;&lt;&lt;&lt;-</panel_attributes>
-    <additional_attributes>10.0;10.0;621.0;140.0</additional_attributes>
-  </element>
-  <element>
-    <id>Relation</id>
-    <coordinates>
-      <x>497</x>
-      <y>315</y>
-      <w>189</w>
-      <h>210</h>
-    </coordinates>
-    <panel_attributes>lt=&lt;-</panel_attributes>
-    <additional_attributes>249.0;280.0;10.0;10.0</additional_attributes>
-  </element>
-  <element>
-    <id>Relation</id>
-    <coordinates>
-      <x>679</x>
-      <y>322</y>
-      <w>28</w>
-      <h>203</h>
-    </coordinates>
-    <panel_attributes>lt=&lt;-</panel_attributes>
-    <additional_attributes>10.0;270.0;16.0;10.0</additional_attributes>
-  </element>
-  <element>
-    <id>Relation</id>
-    <coordinates>
-      <x>707</x>
-      <y>301</y>
-      <w>175</w>
-      <h>224</h>
-    </coordinates>
-    <panel_attributes>lt=&lt;-</panel_attributes>
-    <additional_attributes>10.0;300.0;227.0;10.0</additional_attributes>
-  </element>
-  <element>
-    <id>Relation</id>
-    <coordinates>
-      <x>728</x>
-      <y>350</y>
-      <w>427</w>
-      <h>175</h>
-    </coordinates>
-    <panel_attributes>lt=&lt;-</panel_attributes>
-    <additional_attributes>10.0;230.0;587.0;10.0</additional_attributes>
-  </element>
-  <element>
-    <id>Relation</id>
-    <coordinates>
-      <x>994</x>
-      <y>301</y>
-      <w>189</w>
-      <h>210</h>
-    </coordinates>
-    <panel_attributes>lt=&lt;&lt;.</panel_attributes>
-    <additional_attributes>247.0;280.0;10.0;10.0</additional_attributes>
-  </element>
-  <element>
-    <id>Relation</id>
-    <coordinates>
-      <x>1197</x>
-      <y>350</y>
-      <w>49</w>
-      <h>161</h>
-    </coordinates>
-    <panel_attributes>lt=&lt;&lt;.</panel_attributes>
-    <additional_attributes>50.0;210.0;10.0;10.0</additional_attributes>
-  </element>
-  <element>
-    <id>Relation</id>
-    <coordinates>
-      <x>1204</x>
-      <y>553</y>
-      <w>49</w>
-      <h>112</h>
-    </coordinates>
-    <panel_attributes>lt=&lt;&lt;.</panel_attributes>
-    <additional_attributes>10.0;10.0;50.0;140.0</additional_attributes>
-  </element>
-  <element>
-    <id>Relation</id>
-    <coordinates>
-      <x>693</x>
-      <y>532</y>
-      <w>35</w>
-      <h>133</h>
-    </coordinates>
-    <panel_attributes>lt=&lt;-</panel_attributes>
-    <additional_attributes>10.0;10.0;30.0;170.0</additional_attributes>
-  </element>
-  <element>
-    <id>Relation</id>
-    <coordinates>
-      <x>567</x>
-      <y>665</y>
-      <w>91</w>
-      <h>28</h>
-    </coordinates>
-    <panel_attributes>lt=&lt;-</panel_attributes>
-    <additional_attributes>10.0;10.0;110.0;20.0</additional_attributes>
+    <additional_attributes>110.0;10.0;10.0;110.0</additional_attributes>
   </element>
   <element>
     <id>Relation</id>
     <coordinates>
       <x>469</x>
-      <y>693</y>
-      <w>70</w>
-      <h>98</h>
+      <y>252</y>
+      <w>119</w>
+      <h>84</h>
     </coordinates>
-    <panel_attributes>lt=&lt;.
-«creates»</panel_attributes>
-    <additional_attributes>10.0;120.0;40.0;10.0</additional_attributes>
+    <panel_attributes>lt=&lt;&lt;&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;160.0;110.0</additional_attributes>
   </element>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>784</x>
-      <y>672</y>
-      <w>63</w>
-      <h>28</h>
+      <x>497</x>
+      <y>252</y>
+      <w>371</w>
+      <h>84</h>
     </coordinates>
-    <panel_attributes>lt=&lt;.</panel_attributes>
-    <additional_attributes>70.0;10.0;10.0;15.0</additional_attributes>
+    <panel_attributes>lt=&lt;&lt;&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;520.0;110.0</additional_attributes>
   </element>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>896</x>
-      <y>301</y>
-      <w>35</w>
-      <h>364</h>
+      <x>518</x>
+      <y>252</y>
+      <w>595</w>
+      <h>84</h>
     </coordinates>
-    <panel_attributes>lt=&lt;.</panel_attributes>
-    <additional_attributes>10.0;500.0;27.0;10.0</additional_attributes>
+    <panel_attributes>lt=&lt;&lt;&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;840.0;110.0</additional_attributes>
   </element>
   <element>
     <id>Relation</id>
     <coordinates>
-      <x>735</x>
-      <y>693</y>
-      <w>518</w>
+      <x>413</x>
+      <y>252</y>
+      <w>14</w>
+      <h>315</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>10.0;440.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>84</x>
+      <y>392</y>
+      <w>245</w>
+      <h>203</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>340.0;280.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>287</x>
+      <y>455</y>
+      <w>84</w>
+      <h>112</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>110.0;150.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>469</x>
+      <y>434</y>
+      <w>28</w>
+      <h>133</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>10.0;180.0;30.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>525</x>
+      <y>490</y>
+      <w>252</w>
+      <h>77</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>10.0;100.0;350.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>553</x>
+      <y>511</y>
+      <w>476</w>
+      <h>77</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>10.0;100.0;670.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>231</x>
+      <y>651</y>
+      <w>98</w>
+      <h>14</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;130.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>525</x>
+      <y>224</y>
+      <w>714</w>
+      <h>343</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;.</panel_attributes>
+    <additional_attributes>1010.0;480.0;1010.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>959</x>
+      <y>490</y>
+      <w>98</w>
+      <h>105</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;.</panel_attributes>
+    <additional_attributes>130.0;140.0;10.0;140.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1141</x>
+      <y>511</y>
+      <w>14</w>
       <h>56</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;.</panel_attributes>
+    <additional_attributes>10.0;70.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1141</x>
+      <y>609</y>
+      <w>14</w>
+      <h>161</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;.</panel_attributes>
+    <additional_attributes>10.0;10.0;10.0;220.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>427</x>
+      <y>686</y>
+      <w>14</w>
+      <h>84</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;10.0;110.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>231</x>
+      <y>784</y>
+      <w>112</w>
+      <h>14</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;150.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>119</x>
+      <y>826</y>
+      <w>14</w>
+      <h>70</h>
     </coordinates>
     <panel_attributes>lt=&lt;.
 «create»</panel_attributes>
-    <additional_attributes>718.0;10.0;718.0;60.0;10.0;60.0;10.0;30.0</additional_attributes>
+    <additional_attributes>10.0;90.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>441</x>
+      <y>938</y>
+      <w>14</w>
+      <h>70</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;.
+«use»</panel_attributes>
+    <additional_attributes>10.0;90.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>539</x>
+      <y>819</y>
+      <w>98</w>
+      <h>14</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;&lt;&lt;&lt;&lt;-</panel_attributes>
+    <additional_attributes>130.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>539</x>
+      <y>868</y>
+      <w>98</w>
+      <h>14</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;.
+«create»</panel_attributes>
+    <additional_attributes>130.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>539</x>
+      <y>812</y>
+      <w>644</w>
+      <h>119</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;.
+«create»</panel_attributes>
+    <additional_attributes>910.0;10.0;910.0;160.0;10.0;160.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>553</x>
+      <y>672</y>
+      <w>126</w>
+      <h>133</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;170.0;180.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>553</x>
+      <y>623</y>
+      <w>504</w>
+      <h>168</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>10.0;10.0;710.0;230.0</additional_attributes>
   </element>
 </diagram>

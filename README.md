@@ -330,7 +330,7 @@ src/test/java/...  JUnit tests, mirroring the main packages
 - **Stage 1 design report** ([`stage1-report.pdf`](stage1-report.pdf)): problem, features F01–F14, use cases, design patterns and feature-to-design traceability.
 - **UML diagrams** (repository root; editable `.uxf` files for [UMLet](https://www.umlet.com/) plus exported `.png` images):
   - `UC`: use case diagram
-  - `CD1`–`CD6`: class diagrams (domain, states and fees, services and commands, agent core, tools, user interfaces)
+  - `CD1`–`CD7`: class diagrams, updated to the implemented code (domain, states and fees, services and commands with persistence, agent core, tools, user interfaces, web version). The Stage 1 versions are in `stage1-report.pdf` and the git history
   - `SD01`–`SD08`: sequence diagrams for the key scenarios
 - **Stage 2 implementation report** (`stage2-report.pdf`, added at submission): what was built, design changes and their reasons, design patterns, AI-assisted development log, and demonstration videos.
 
