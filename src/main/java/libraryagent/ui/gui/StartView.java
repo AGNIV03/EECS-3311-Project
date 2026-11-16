@@ -24,6 +24,7 @@ final class StartView extends VBox {
     private final AgentController controller;
     private final Gui gui;
     private final MainWindow window;
+    private final List<Runnable> resets = new java.util.ArrayList<>();
 
     StartView(AgentController controller, Gui gui, MainWindow window) {
         this.controller = controller;
@@ -55,6 +56,11 @@ final class StartView extends VBox {
         getChildren().addAll(title, subtitle, cards, guestRow);
     }
 
+    /** Clears both forms; called whenever the start screen is shown again. */
+    void reset() {
+        resets.forEach(Runnable::run);
+    }
+
     private VBox signInCard() {
         TextField memberId = new TextField();
         memberId.setPromptText("Member ID, e.g. M001");
@@ -71,6 +77,10 @@ final class StartView extends VBox {
             } catch (LibraryException ex) {
                 error.setText(ex.getMessage());
             }
+        });
+        resets.add(() -> {
+            memberId.clear();
+            error.setText("");
         });
         VBox card = card(Gui.heading("Sign in"), memberId, signIn, error,
                 Gui.muted("Sample accounts: M001 (Alex, standard), M002 (Sam, student), LIB001 (Lee, librarian)."));
@@ -127,6 +137,14 @@ final class StartView extends VBox {
             } catch (LibraryException ex) {
                 error.setText(ex.getMessage());
             }
+        });
+        resets.add(() -> {
+            for (TextField field : List.of(name, email, authors, maxPages)) {
+                field.clear();
+            }
+            type.getSelectionModel().selectFirst();
+            genres.getSelectionModel().clearSelection();
+            error.setText("");
         });
         VBox card = card(Gui.heading("New member? Register"), form, register, error);
         card.setPrefWidth(440);

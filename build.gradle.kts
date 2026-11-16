@@ -90,3 +90,14 @@ tasks.register<Test>("liveTest") {
         showStandardStreams = true
     }
 }
+
+// Drives the real GUI through every feature for the demonstration video (calls the live model).
+// Usage: gradlew demoGui --args="<path to ffmpeg.exe, or - for no recording> <output folder>"
+tasks.register<JavaExec>("demoGui") {
+    group = "application"
+    description = "Runs the scripted GUI walkthrough used to record the demonstration video."
+    classpath = sourceSets["test"].runtimeClasspath
+    mainClass = "libraryagent.ui.gui.DemoWalkthrough"
+    workingDir = rootDir
+    environment("DB_PATH", "data/demo-gui.db")
+}

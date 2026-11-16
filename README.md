@@ -6,7 +6,9 @@ An AI agent for a public library, written in Java 21 for the EECS 3311 course pr
 
 A request like this would normally mean several searches, availability checks and hold forms. The agent plans the steps itself: it searches the catalogue, checks which copies are free, reserves them, and summarises what it did. Every rule (borrowing limits, copy states, fees, hold queues) is enforced by ordinary Java code. The language model only chooses which tools to call.
 
-**Status:** Stage 2 (implementation) is complete; submission is due Nov 10, 2026. All 14 features work end to end in the CLI, the JavaFX GUI and the web version, with the AI agent. The week of Nov 3 is for testing, fixes and additional features. See [Feature status](#features) below.
+**Status:** Stage 2 (implementation) is complete. All 14 features work end to end in the CLI, the JavaFX GUI and the web version, with the AI agent. See [Features](#features) below.
+
+**Try it online:** https://eecs.agniv.site (no installation; see [Using the live site](#using-the-live-site)).
 
 ---
 
@@ -15,10 +17,13 @@ A request like this would normally mean several searches, availability checks an
 - [How the agent works](#how-the-agent-works)
 - [Architecture](#architecture)
 - [Requirements](#requirements)
+- [Getting an API key](#getting-an-api-key)
 - [Setup](#setup)
 - [Running the application](#running-the-application)
 - [Using the CLI](#using-the-cli)
-- [Web version and deployment](#web-version-and-deployment)
+- [Web version](#web-version)
+- [Deployment](#deployment)
+- [Technical details](#technical-details)
 - [Testing](#testing)
 - [Configuration reference](#configuration-reference)
 - [Project structure](#project-structure)
@@ -55,7 +60,7 @@ Every feature is available from the CLI, the JavaFX GUI and the browser interfac
 
 - **Model:** Claude Sonnet 5.5 (`claude-sonnet-5-5`) through the Anthropic Messages API, using native tool calling. It is the only model the app uses.
 - **Loop:** the `Planner` sends the conversation and the list of tools to the model. The model either asks for tools to run, whose results are fed back, or gives a final answer. A step limit stops runaway loops.
-- **Tools (15):** search the catalogue, read a book's record, check availability, reserve, return, renew, view the account, register a member, manage reading lists, record a rating, get recommendations, save a curated list, and undo. AI genre tagging for new books is a separate, one-shot model call. Each tool validates its arguments before calling a Java service, so the model can never break a library rule.
+- **Tools (13):** search the catalogue, read a book's record, check availability, reserve, return, renew, view the account, register a member, manage reading lists, record a rating, get recommendations, save a curated list, and undo. AI genre tagging for new books is a separate, one-shot model call. Each tool validates its arguments before calling a Java service, so the model can never break a library rule.
 - **Grounding:** the app only shows books that tools actually returned. The model cannot invent a title and have it appear as a result.
 - **Safety:**
   - Book descriptions and other tool output are treated as data, never as instructions. The sample catalogue includes one book with a planted instruction, so this can be tested.
@@ -67,12 +72,12 @@ Every feature is available from the CLI, the JavaFX GUI and the browser interfac
 
 ## Architecture
 
-A layered design. Both user interfaces call one controller:
+A layered design. All three user interfaces call one controller:
 
 ```
 CLI (CliApp)  ─┐
-               ├─►  AgentController (Facade)  ─►  Planner + tools (agent core)  ─►  ClaudeClient ─► Anthropic API
-JavaFX GUI    ─┘            │                              │
+JavaFX GUI    ─┼─►  AgentController (Facade)  ─►  Planner + tools (agent core)  ─►  ClaudeClient ─► Anthropic API
+Web server    ─┘            │                              │
                             ▼                              ▼
                  Domain services (catalogue, circulation, members, reading lists, notifications)
                             │
@@ -106,6 +111,26 @@ Design patterns used:
 - **An Anthropic API key** from https://console.anthropic.com, for the AI assistant. Optional: without one, everything except chat still works.
 
 Check your Java version with `java -version`. It should report 21. If it reports an older version, set `JAVA_HOME` to your JDK 21 folder and open a new terminal.
+
+---
+
+## Getting an API key
+
+The AI assistant calls Claude Sonnet 5.5 through the Anthropic API, which needs a key from your own Anthropic account. No key is included in this repository.
+
+1. Go to https://console.anthropic.com and sign up or sign in.
+2. Open **Billing** and add credit. The API is prepaid and separate from a Claude.ai subscription; the smallest amount is enough.
+3. Open **API keys** and click **Create key**. Give it a name, such as `library-agent`.
+4. Copy the key straight away. It starts with `sk-ant-` and is shown only once.
+5. Paste it into your `.env` file as described under [Setup](#setup).
+
+Optionally, set a monthly spend limit for the account under **Limits**.
+
+**Cost.** Each chat message costs a fraction of a cent to a few cents. All development, live tests and the public site for this project together cost $0.42.
+
+**Keeping it safe.** Treat the key like a password. Keep it only in `.env` or an environment variable, and never put it in source code, screenshots or commits. If a key is exposed, delete it under **API keys** and create a new one.
+
+**Without a key.** The application still starts, and every feature works through the forms and commands. Only chat, AI genre suggestions and AI-curated lists are turned off. To try those without a key, use the [live site](https://eecs.agniv.site).
 
 ---
 
@@ -181,7 +206,7 @@ The first launch takes a little longer while Gradle downloads dependencies and c
 | `M002` | Sam Patel | Student (limit 8 loans) | Has the only copy of *The Hobbit* |
 | `LIB001` | Lee Chen | Librarian | Can check books in and out, list overdue loans and add books |
 
-Login is by member ID only; there are no passwords in this version. The catalogue has 40 books across Fiction, Nonfiction and Young Adult subgenres.
+In the GUI and CLI, login is by member ID only; there are no passwords in this version. The website also asks for the account email (see [Using the live site](#using-the-live-site)). The catalogue has 40 books across Fiction, Nonfiction and Young Adult subgenres.
 
 ---
 
@@ -239,24 +264,112 @@ More things to try:
 
 ---
 
-## Web version and deployment
+## Web version
 
-The same application also runs as a web server with a JSON API, for hosting on a public site:
+The same application also runs as a web server: a browser interface with the same four tabs as the GUI, on top of a JSON API. It is an addition to the GUI and CLI, not a replacement for either.
+
+### Using the live site
+
+Open **https://eecs.agniv.site** in any browser. Nothing needs installing and no API key is needed; the site uses its own.
+
+| To act as | Do this on the sign-in screen |
+|---|---|
+| A guest | Click **Browse as a guest**. You can search the catalogue; reserving needs an account |
+| Alex Morgan (standard member) | Member ID `M001`, email `alex.morgan@example.com` |
+| Sam Patel (student) | Member ID `M002`, email `sam.patel@example.com` |
+| A new member | Fill in the registration form, or sign up by chatting with the assistant |
+| The librarian | Member ID `LIB001` and the librarian passcode, which this demonstration site prints on the sign-in screen |
+
+Things to know about the live site:
+- **Everyone shares one demonstration library.** Another visitor's reservations and loans are visible to you, so the starting situation in [Sample accounts](#sample-accounts) may have changed.
+- **Chat is limited.** Each visitor can send 6 messages a minute and 40 an hour, and the whole site stops answering chat for the day once its AI budget is used. Search, reserving, accounts and lists keep working.
+- **A session ends after 2 hours without activity,** or when the site restarts.
+
+### Running it on your own computer
 
 ```powershell
-.\gradlew.bat runWeb        # http://localhost:8080
+.\gradlew.bat runWeb        # then open http://localhost:8080
 ```
 
-- Each browser gets its own session (cookie), with its own login, undo history and conversation.
-- Protections for a public site:
-  - a daily AI spending cap (`DAILY_BUDGET_USD`)
-  - per-visitor chat limits
-  - message size limits
-  - librarian sign-in only with `LIBRARIAN_PASSCODE`
-  - member sign-in needs the member ID and the email on the account (the desktop GUI and CLI ask for the ID only)
-- Open `http://localhost:8080` for the browser interface. It has the same four tabs as the GUI. The JSON API is under `/api/...` (for example `/api/health`).
+It uses the same `.env` as the GUI and CLI. To sign in as the librarian locally, set `LIBRARIAN_PASSCODE` in `.env` first; while it is empty, librarian sign-in is turned off on the website.
 
-To host it on a VPS with HTTPS on your own domain (Docker and Caddy), follow **[deploy/DEPLOY.md](deploy/DEPLOY.md)**.
+### How the web version differs from the GUI and CLI
+
+- Each browser gets its own session (a cookie), with its own login, undo history and conversation.
+- Member sign-in needs the member ID **and** the email on the account, because member IDs are sequential and easy to guess. The GUI and CLI ask for the ID only.
+- Librarian sign-in needs `LIBRARIAN_PASSCODE`.
+- Protections for a public site: a daily AI spending cap (`DAILY_BUDGET_USD`), per-visitor chat and sign-in limits, a 2,000-character limit on messages and a 16 KB limit on requests.
+
+### JSON API
+
+Every page action is a call under `/api/`. The main routes:
+
+| Route | Purpose |
+|---|---|
+| `GET /api/health` | Returns `{"status":"ok"}`; used to check the server is up |
+| `GET /api/me`, `POST /api/login`, `POST /api/logout`, `POST /api/register` | Session and accounts |
+| `POST /api/chat` | One message to the assistant; returns the reply, the tools it called and the books shown |
+| `GET /api/search`, `GET /api/genres`, `GET /api/books/{isbn}`, `GET /api/recommendations` | Catalogue |
+| `POST /api/reserve`, `POST /api/reservations/{id}/cancel`, `POST /api/loans/{id}/renew`, `POST /api/undo` | Member actions |
+| `GET /api/account`, `GET /api/history`, `POST /api/rate`, `POST /api/tracking` | Account, history and ratings |
+| `GET /api/lists`, `POST /api/lists`, `POST /api/lists/add`, `/remove`, `/move` | Reading lists |
+| `GET /api/notifications` | Hold-ready and overdue notices (the page polls this) |
+| `POST /api/desk/checkout`, `/checkin`, `/books`, `/suggest-genres`, `GET /api/desk/overdue` | Librarian desk (passcode sign-in required) |
+
+---
+
+## Deployment
+
+The live site runs in Docker on a VPS. The full step-by-step guide, with everyday operations and troubleshooting, is **[deploy/DEPLOY.md](deploy/DEPLOY.md)**. In short:
+
+**1. Get the code onto the server and configure it** (Docker must be installed):
+```bash
+git clone https://github.com/AGNIV03/EECS-3311-Project.git /opt/library-agent
+cd /opt/library-agent
+cp .env.example .env
+nano .env        # set ANTHROPIC_API_KEY and LIBRARIAN_PASSCODE; set DOMAIN if using Caddy
+```
+
+**2. Build and start it**, in one of two ways:
+
+| Setup | Command | Result |
+|---|---|---|
+| Caddy (own domain, automatic HTTPS) | `docker compose up -d --build` | Caddy serves `https://<DOMAIN>` on ports 80 and 443. The domain's DNS record must point at the server |
+| Cloudflare Tunnel (how the live site runs) | `docker compose -f docker-compose.tunnel.yml up -d --build` | The app listens only on `127.0.0.1:8092`. In Cloudflare, add a published application route from your hostname to `http://localhost:8092` |
+
+**3. Check it:**
+```bash
+curl http://127.0.0.1:8092/api/health      # tunnel setup; prints {"status":"ok"}
+```
+
+**Updating** is `git pull` followed by the same `up -d --build` command. The database lives in a Docker volume (`library-data`), so it survives rebuilds; `deploy/DEPLOY.md` shows how to reset it to the sample data.
+
+The image is built in two stages (`Dockerfile`): a JDK 21 stage runs the Gradle build, and the result runs on a JRE. No Java or Gradle is needed on the server itself.
+
+---
+
+## Technical details
+
+| Topic | Detail |
+|---|---|
+| Language and build | Java 21, Gradle with the wrapper checked in (`gradlew`), so no separate Gradle install |
+| Libraries | JavaFX 21.0.13 (`javafx.controls`), Anthropic Java SDK 3.2.0, `sqlite-jdbc` 3.53.4.0, Jackson 2.22.4, JUnit 6.1.3 |
+| Size | 128 main source files (about 9,900 lines); 30 test classes, 229 tests |
+| Storage | One SQLite file (`data/library.db`), created from `resources/db/schema.sql` and filled from `resources/seed/library.json` on first run |
+| Object model | Each repository keeps one in-memory object per ID and writes changes through to SQLite, so a loan, its copy, its book and that book's hold queue are the same shared objects everywhere |
+| Atomic writes | A circulation action that changes several records (for example a return that passes the copy to the next person waiting) is written in one database transaction |
+| Time | Services take a `Clock`. Tests move it to check due dates, pickup expiry and fees |
+| Model call | Claude Sonnet 5.5 through the Messages API with native tool calling and strict tool schemas. The system prompt and tool list never change during a conversation and are prompt-cached; the member and date are sent as session notes |
+| Agent loop | At most `AGENT_MAX_STEPS` (default 8) tool-calling steps per message. One step may hold several tool calls. An identical failing call is not repeated |
+| Grounding | Only books returned by tools in that turn are displayed. Recommendations and curated lists are limited to candidates chosen by Java code |
+| Prompt-injection defence | Tool output is marked as data. The sample catalogue has one book with a planted instruction (*The Lighthouse Ledger*) to test this |
+| Undo | Every undoable action is a command object run through one history per session, whether it came from a button, a CLI command or the assistant |
+| Concurrency | GUI: the assistant runs on a background task so the window stays responsive. Web: a fixed pool of worker threads, one lock per session; a second request for a busy session is turned away after 2 seconds |
+| Web server | The JDK's built-in `HttpServer`; no web framework. The browser interface is plain HTML, CSS and JavaScript in `resources/web` |
+| Secrets | The API key is read from `.env` or the environment, never from source code, and is never sent to the browser |
+| Cost control | The CLI prints tokens used and an estimated cost on exit. The web version stops chat once the day's estimated spend reaches `DAILY_BUDGET_USD` |
+
+The reasons behind these choices, and every change from the Stage 1 design, are in the Stage 2 report.
 
 ---
 
@@ -288,7 +401,12 @@ All settings live in `.env`; environment variables with the same names take prec
 | `DAILY_BUDGET_USD` | `2.00` | Web version: estimated AI spend allowed per day |
 | `CHAT_LIMIT_PER_MINUTE` / `CHAT_LIMIT_PER_HOUR` | `6` / `40` | Web version: chat messages per visitor |
 | `LIBRARIAN_PASSCODE` | *(empty)* | Web version: passcode for librarian sign-in; empty disables it |
+| `SHOW_LIBRARIAN_PASSCODE` | `false` | Web version: show the passcode on the sign-in screen (open demonstrations only) |
 | `DOMAIN` | | Deployment: public domain served by Caddy |
+| `HOST_PORT` | `8092` | Deployment: local port when running behind a Cloudflare Tunnel |
+| `TZ` | `America/Toronto` | Deployment: time zone for due dates and the daily budget reset |
+
+`deploy/DEPLOY.md` lists the remaining deployment-only settings.
 
 The model is fixed to Claude Sonnet 5.5 and cannot be changed in configuration.
 
@@ -319,7 +437,8 @@ src/main/resources/
   seed/library.json      sample catalogue, members and loans
   prompts/system.txt     the agent's instructions
   web/                   browser interface files
-deploy/            Caddyfile and deployment guide (with Dockerfile, docker-compose.yml at the root)
+deploy/            Caddyfile and deployment guide
+Dockerfile, docker-compose.yml, docker-compose.tunnel.yml   container build and the two hosting setups
 src/test/java/...  JUnit tests, mirroring the main packages
 ```
 
@@ -332,6 +451,6 @@ src/test/java/...  JUnit tests, mirroring the main packages
   - `UC`: use case diagram
   - `CD1`–`CD7`: class diagrams, updated to the implemented code (domain, states and fees, services and commands with persistence, agent core, tools, user interfaces, web version). The Stage 1 versions are in `stage1-report.pdf` and the git history
   - `SD01`–`SD08`: sequence diagrams for the key scenarios
-- **Stage 2 implementation report** (`stage2-report.pdf`, added at submission): what was built, design changes and their reasons, design patterns, AI-assisted development log, and demonstration videos.
+- **Stage 2 implementation report** (`stage2-report.pdf`): what was built, design changes and their reasons, design patterns, AI-assisted development log, and demonstration videos.
 
 This project was developed with AI assistance (Claude Code), as required by the course. The Stage 2 report documents how.

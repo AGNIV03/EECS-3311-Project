@@ -32,15 +32,17 @@ public class RegisterMemberTool extends AbstractTool {
                 "Register a new library member and log them in. Before calling, ask for any missing required "
                         + "detail (name, email, member type). Favourite genres must be genres from the catalogue: "
                         + "if the user names one that isn't (e.g. 'sci-fi'), map it to the closest real subgenre "
-                        + "or ask. Preferences are optional. Only for users who are not logged in.",
+                        + "or ask. Preferences are optional for the user, but always send every field: use an empty "
+                        + "list or 0 for anything they did not give. Call it once. Only for users who are not "
+                        + "logged in.",
                 properties(
                         "name", stringProperty("Full name."),
                         "email", stringProperty("Email address."),
                         "memberType", enumProperty("standard, or student for students.", "standard", "student"),
-                        "favoriteGenres", stringArrayProperty("Catalogue genres the member enjoys."),
-                        "favoriteAuthors", stringArrayProperty("Authors the member enjoys."),
+                        "favoriteGenres", stringArrayProperty("Catalogue genres the member enjoys; [] if none given."),
+                        "favoriteAuthors", stringArrayProperty("Authors the member enjoys; [] if none given."),
                         "maxPages", integerProperty("Preferred maximum book length in pages; 0 if they gave none.")),
-                List.of("name", "email", "memberType"));
+                List.of("name", "email", "memberType", "favoriteGenres", "favoriteAuthors", "maxPages"));
     }
 
     @Override

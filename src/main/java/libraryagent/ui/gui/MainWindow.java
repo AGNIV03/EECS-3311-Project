@@ -117,6 +117,7 @@ final class MainWindow extends BorderPane implements LibraryEventListener {
             setStatus("Please wait for the assistant to finish before signing out.");
             return;
         }
+        start.reset();
         gui.dataRun(controller::logout);
         chat.clear();
         pendingNotices.clear();
