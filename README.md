@@ -451,6 +451,7 @@ src/test/java/...  JUnit tests, mirroring the main packages
   - `UC`: use case diagram
   - `CD1`–`CD7`: class diagrams, updated to the implemented code (domain, states and fees, services and commands with persistence, agent core, tools, user interfaces, web version). The Stage 1 versions are in `stage1-report.pdf` and the git history
   - `SD01`–`SD08`: sequence diagrams for the key scenarios
-- **Stage 2 implementation report** (`stage2-report.pdf`): what was built, design changes and their reasons, design patterns, AI-assisted development log, and demonstration videos.
+- **Stage 2 implementation report** (`stage2-report.pdf`): what was built, design changes and their reasons, design patterns, the AI-assisted development log and the demonstration index.
+- **Demonstration recordings** (repository root): `demo-gui.mp4` shows the JavaFX GUI and `demo-cli.mp4` shows the CLI, both running the real application. The report's demonstration index gives the time of each feature.
 
 This project was developed with AI assistance (Claude Code), as required by the course. The Stage 2 report documents how.

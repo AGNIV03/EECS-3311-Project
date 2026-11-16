@@ -6,9 +6,12 @@ so the recording reads like a person using it. Assistant replies come from the l
 running this costs money.
 
 Usage (from the project root, in the console window to be recorded):
-    python src/test/demo/cli_demo.py <java.exe> <ffmpeg.exe or -> <output folder>
+    python src/test/demo/cli_demo.py <java.exe> <ffmpeg.exe or -> <output folder> [quick]
+
+With "quick" it runs the short version: one pass per feature, typed at 40 to 50 words a minute.
 """
 import os
+import random
 import re
 import subprocess
 import sys
@@ -16,6 +19,16 @@ import threading
 import time
 
 TITLE = "LibraryAgentCliDemo"
+QUICK = False
+STARTED = time.time()
+TIMELINE = []
+
+
+def key_delay(state={"wpm": 45}):
+    """The pause after a key, for typing at 40 to 50 words a minute with an uneven rhythm."""
+    if random.random() < 0.18:
+        state["wpm"] = random.randint(40, 50)
+    return 60.0 / (state["wpm"] * 5) * random.uniform(0.65, 1.25)
 PROMPT = re.compile(r"(?:^|\n)(?:[A-Z]+\d+)?> $")
 
 
@@ -74,7 +87,7 @@ class Session:
         for ch in line:
             sys.stdout.write(ch)
             sys.stdout.flush()
-            time.sleep(0.012 if len(line) > 60 else 0.04)
+            time.sleep(key_delay() if QUICK else 0.012 if len(line) > 60 else 0.04)
         time.sleep(0.4)
         sys.stdout.write("\n")
         sys.stdout.flush()
@@ -84,14 +97,19 @@ class Session:
         time.sleep(pause)
 
     def chat(self, line):
-        self.send(line, pause=7.0)
+        self.send(line, pause=3.0 if QUICK else 7.0)
 
     def banner(self, text):
         """Shows a heading above the current prompt."""
+        if QUICK:  # the short version shows only what a person types; the heading goes to the timeline
+            TIMELINE.append((time.time() - STARTED, text))
+            time.sleep(1.0)
+            return
         prompt = self.prompt_text()
         sys.stdout.write("\r\x1b[2K\n\x1b[1;97;44m  " + text + "  \x1b[0m\n\n" + prompt)
         sys.stdout.flush()
-        time.sleep(3.0)
+        TIMELINE.append((time.time() - STARTED, text))
+        time.sleep(1.8 if QUICK else 3.0)
 
     def signed_in(self):
         return self.prompt_text().strip() != ">"
@@ -245,8 +263,53 @@ def script(s):
     s.send("exit", expect="Goodbye.\n", pause=6.0)
 
 
+def quick_script(s):
+    s.wait()
+    s.banner("F01 Conversational registration")
+    s.chat("Sign me up: Jordan Lee, jordan.lee@example.com, standard member. I like Fantasy.")
+    if not s.signed_in():
+        s.chat("Yes, create it.")
+    s.banner("F02 Natural-language search")
+    s.chat("Find sci-fi books under 320 pages")
+    s.banner("F13 Memory and F10 Grounded Q&A")
+    s.chat("What is the second one about?")
+    s.banner("F04 Multi-book reserve and F05 Hold queue")
+    s.chat("Reserve Piranesi and The Hobbit")
+    s.chat("Yes, join the queue")
+    s.banner("F12 Undo last action")
+    s.send("undo", pause=2.5)
+    s.banner("F03 Reading lists")
+    s.send("list create Weekend", pause=1.5)
+    s.send("list add Weekend 9781000000005", pause=1.5)
+    s.send("list show Weekend", pause=2.5)
+    s.banner("F09 Recommendations")
+    s.send("recommend", pause=3.5)
+    s.banner("F14 Reading feedback")
+    s.send("login M001", pause=2.5)
+    s.send("rate 9781000000009 liked", pause=2.5)
+    s.banner("F08 Renewals and late fees")
+    s.send("account", pause=3.0)
+    s.send("renew " + (loan_id(s.output(), "Dune") or "L0001"), pause=3.5)
+    s.banner("F06 Checkout and F07 Return")
+    s.send("login LIB001", pause=1.5)
+    s.send("checkout M002 C0043", pause=3.0)
+    s.send("return C0009", pause=3.5)
+    s.banner("F11 AI genre tagging")
+    s.send("addbook", expect="ISBN: ", pause=0.3)
+    s.send("9781000000041", expect="Title: ", pause=0.3)
+    s.send("The Clockwork Orchard", expect="Author: ", pause=0.3)
+    s.send("Mira Tanaka", expect="Pages: ", pause=0.3)
+    s.send("312", expect="Description: ", pause=0.3)
+    s.send("An inventor guards a magical clockwork orchard.", expect="Number of copies: ", pause=0.3)
+    s.send("1", expect=re.compile(r"Subgenres, comma-separated.*: $"), pause=3.0)
+    s.send("", pause=3.5)
+    s.send("exit", expect="Goodbye.\n", pause=3.5)
+
+
 def main():
+    global QUICK, STARTED
     java, ffmpeg, out = sys.argv[1], sys.argv[2], sys.argv[3]
+    QUICK = len(sys.argv) > 4 and sys.argv[4] == "quick"
     os.makedirs(out, exist_ok=True)
     os.system("")  # turn on ANSI escape handling in the Windows console
     sys.stdout.write("\x1b]0;" + TITLE + "\x07\x1b[2J\x1b[H")
@@ -262,9 +325,10 @@ def main():
              "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", os.path.join(out, "cli-raw.mp4")],
             stdin=subprocess.PIPE, stdout=log, stderr=log)
         time.sleep(2.5)
+    STARTED = time.time()
     session = Session(java)
     try:
-        script(session)
+        (quick_script if QUICK else script)(session)
     except Exception as error:  # keep the recording even if a step fails
         sys.stdout.write("\n[demo stopped: %r]\n" % (error,))
         time.sleep(3)
@@ -274,6 +338,9 @@ def main():
             recorder.stdin.flush()
             recorder.wait(30)
         session.proc.kill()
+        with open(os.path.join(out, "cli-timeline.txt"), "w", encoding="utf8") as timeline:
+            for when, text in TIMELINE:
+                timeline.write("%.2f\t%s\n" % (when, text))
 
 
 if __name__ == "__main__":
