@@ -1,3 +1,5 @@
+import java.util.zip.ZipFile
+
 plugins {
     application
     id("org.openjfx.javafxplugin") version "0.1.0"
@@ -46,6 +48,54 @@ tasks.register<JavaExec>("runCli") {
     mainClass = "libraryagent.ui.cli.CliApp"
     standardInput = System.`in`
     workingDir = rootDir
+}
+
+// One runnable file for the CLI: java -jar build/libs/library-agent-cli.jar --input task.txt
+// The JavaFX libraries are left out, because the CLI does not use them.
+val cliLibraries = configurations.runtimeClasspath.map { classpath ->
+    classpath.filter { it.name.endsWith(".jar") && !it.name.startsWith("javafx") }
+}
+
+// Libraries register their plug-ins in META-INF/services files of the same name, so those files
+// are joined here; copying only the first one would drop the others' entries.
+val mergeCliServices = tasks.register("mergeCliServices") {
+    val target = layout.buildDirectory.dir("cli-services")
+    inputs.files(cliLibraries)
+    outputs.dir(target)
+    doLast {
+        val merged = sortedMapOf<String, MutableSet<String>>()
+        cliLibraries.get().forEach { library ->
+            ZipFile(library).use { zip ->
+                zip.entries().asSequence()
+                    .filter { !it.isDirectory && it.name.startsWith("META-INF/services/") }
+                    .forEach { entry ->
+                        val lines = zip.getInputStream(entry).bufferedReader().readLines()
+                            .map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }
+                        merged.getOrPut(entry.name.removePrefix("META-INF/services/")) { linkedSetOf() }.addAll(lines)
+                    }
+            }
+        }
+        val folder = target.get().asFile
+        folder.deleteRecursively()
+        folder.mkdirs()
+        merged.forEach { (name, lines) -> File(folder, name).writeText(lines.joinToString("\n") + "\n") }
+    }
+}
+
+tasks.register<Jar>("cliJar") {
+    group = "application"
+    description = "Builds the standalone CLI as one runnable jar."
+    archiveFileName = "library-agent-cli.jar"
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes("Main-Class" to "libraryagent.ui.cli.CliApp", "Multi-Release" to "true")
+    }
+    from(sourceSets["main"].output)
+    from(mergeCliServices) { into("META-INF/services") }
+    from(cliLibraries.map { libraries -> libraries.map { zipTree(it) } }) {
+        exclude("META-INF/services/**", "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA",
+            "META-INF/MANIFEST.MF", "module-info.class", "META-INF/versions/*/module-info.class")
+    }
 }
 
 tasks.register<JavaExec>("runWeb") {

@@ -8,6 +8,7 @@ import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Clock;
 import java.util.Arrays;
 import java.util.List;
@@ -37,9 +38,10 @@ import libraryagent.domain.ReadingList;
  * Command-line interface. Short commands map directly to {@link AgentController} methods;
  * anything else is plain language for the AI assistant.
  *
- * <p>Options: {@code --member <id>} logs in on start, {@code --reset-db} deletes the database
- * so it is re-created from the sample data, {@code --verbose} prints each tool call, and
- * {@code --json} switches to the headless mode in {@link CliJsonMode}.
+ * <p>Options: {@code --input <file>} reads the lines of a task file instead of the keyboard,
+ * {@code --member <id>} logs in on start, {@code --reset-db} deletes the database so it is
+ * re-created from the sample data, {@code --verbose} prints each tool call, {@code --json}
+ * switches to the headless mode in {@link CliJsonMode}, and {@code --help} prints the options.
  */
 public class CliApp {
 
@@ -50,7 +52,22 @@ public class CliApp {
     private final CliCommandParser parser = new CliCommandParser();
     private boolean verbose;
     private boolean quiet;
+    private boolean echo;
     private AgentResponse lastChat;
+
+    /** The options the CLI accepts, printed by {@code --help}. */
+    static final String USAGE = """
+            Library Agent CLI
+            Usage: java -jar library-agent-cli.jar [options]
+              --input <file>   read commands and plain-language requests from a file, one per line,
+                               and exit at the end of the file (default: the keyboard)
+              --member <id>    log in as this member on start (e.g. M001, or LIB001 for the librarian)
+              --json           print one line of JSON per input line, for scripts and automated tests
+              --verbose        print each tool the assistant calls
+              --reset-db       delete the database first, so it is re-created from the sample data
+              --help           print this text
+            The AI assistant needs ANTHROPIC_API_KEY in a .env file or in the environment.
+            Without a key the commands still work; type 'help' inside the CLI to list them.""";
 
     public CliApp(BufferedReader in, PrintStream out, AgentController controller, boolean llmEnabled) {
         this.in = in;
@@ -69,6 +86,31 @@ public class CliApp {
         this.quiet = quiet;
     }
 
+    /** When on, each line read is printed after the prompt. Used when the input is a file. */
+    void setEcho(boolean echo) {
+        this.echo = echo;
+    }
+
+    /**
+     * The reader for the session's input: the file named after {@code --input}, or the keyboard.
+     *
+     * @throws IllegalArgumentException if the option has no file name or the file cannot be read
+     */
+    static BufferedReader openInput(List<String> options) throws IOException {
+        int flag = options.indexOf("--input");
+        if (flag < 0) {
+            return new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
+        }
+        if (flag + 1 >= options.size() || options.get(flag + 1).startsWith("--")) {
+            throw new IllegalArgumentException("--input needs a file name, e.g. --input task.txt");
+        }
+        Path file = Path.of(options.get(flag + 1));
+        if (!Files.isReadable(file) || Files.isDirectory(file)) {
+            throw new IllegalArgumentException("Cannot read the input file: " + file);
+        }
+        return Files.newBufferedReader(file, StandardCharsets.UTF_8);
+    }
+
     /** The assistant's reply to the most recent line, if that line went to the assistant; then cleared. */
     AgentResponse takeLastChat() {
         AgentResponse response = lastChat;
@@ -77,12 +119,23 @@ public class CliApp {
     }
 
     public static void main(String[] args) throws IOException {
-        AppConfig config = AppConfig.load();
         List<String> options = Arrays.asList(args);
+        if (options.contains("--help") || options.contains("-h")) {
+            System.out.println(USAGE);
+            return;
+        }
+        BufferedReader in;
+        try {
+            in = openInput(options);
+        } catch (IllegalArgumentException e) {
+            System.err.println(e.getMessage());
+            System.exit(2);
+            return;
+        }
+        AppConfig config = AppConfig.load();
         if (options.contains("--reset-db")) {
             Files.deleteIfExists(config.dbPath());
         }
-        BufferedReader in = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
         PrintStream out = new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
         try (LibraryServices services = LibraryServices.open(config.dbPath(), Clock.systemDefaultZone())) {
             ClaudeClient llm = config.apiKey().map(key -> new ClaudeClient(key, config.effort())).orElse(null);
@@ -104,6 +157,7 @@ public class CliApp {
             controller.subscribe(new CliNotifier(out, controller));
             CliApp app = new CliApp(in, out, controller, controller.assistantAvailable());
             app.setVerbose(options.contains("--verbose"));
+            app.setEcho(options.contains("--input"));
             if (startMember != null) {
                 app.dispatch(new CliAction("login", List.of(startMember)));
             }
@@ -121,7 +175,13 @@ public class CliApp {
             out.flush();
             String line = in.readLine();
             if (line == null) {
+                if (echo) {
+                    out.println();
+                }
                 break;
+            }
+            if (echo) {
+                out.println(line);
             }
             CliAction action = parser.parse(line);
             if (action.kind().equals("exit")) {

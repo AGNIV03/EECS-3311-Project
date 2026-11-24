@@ -133,4 +133,34 @@ class CliAppTest {
         String output = run("find me a short fantasy book", "exit");
         assertContains(output, "The AI assistant is turned off");
     }
+
+    @Test
+    void inputOptionReadsTheTaskFile(@org.junit.jupiter.api.io.TempDir java.nio.file.Path folder) throws IOException {
+        java.nio.file.Path task = folder.resolve("task.txt");
+        java.nio.file.Files.writeString(task, "login M001\naccount\n");
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        PrintStream out = new PrintStream(buffer, true, StandardCharsets.UTF_8);
+        AgentController controller = new AgentController(services, new SessionContext());
+        try (BufferedReader in = CliApp.openInput(java.util.List.of("--input", task.toString()))) {
+            CliApp app = new CliApp(in, out, controller, false);
+            app.setEcho(true);
+            app.repl();
+        }
+        String output = buffer.toString(StandardCharsets.UTF_8);
+        assertContains(output, "> login M001");
+        assertContains(output, "Welcome, Alex Morgan.");
+        assertContains(output, "M001> account");
+        assertContains(output, "Dune");
+        assertContains(output, "Goodbye.");
+    }
+
+    @Test
+    void inputOptionRejectsAMissingFileOrName(@org.junit.jupiter.api.io.TempDir java.nio.file.Path folder) {
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> CliApp.openInput(java.util.List.of("--input", folder.resolve("none.txt").toString())));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> CliApp.openInput(java.util.List.of("--input")));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> CliApp.openInput(java.util.List.of("--input", "--json")));
+    }
 }
