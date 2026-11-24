@@ -21,6 +21,7 @@ A request like this would normally mean several searches, availability checks an
 - [Setup](#setup)
 - [Running the application](#running-the-application)
 - [Using the CLI](#using-the-cli)
+- [Standalone CLI](#standalone-cli)
 - [Web version](#web-version)
 - [Deployment](#deployment)
 - [Technical details](#technical-details)
@@ -175,6 +176,8 @@ Run these from the project folder. On macOS/Linux use `./gradlew` instead of `.\
 .\gradlew.bat runCli -q --console=plain --args="--member M001"              # log in on start
 .\gradlew.bat runCli -q --console=plain --args="--reset-db --member LIB001"  # fresh sample data, as the librarian
 ```
+- `--input <file>`: read commands and requests from a file, one per line, and exit at the end. See [Standalone CLI](#standalone-cli).
+- `--help`: print the options and exit.
 - `--member <id>`: log in as this member when the CLI starts.
 - `--reset-db`: delete `data/library.db` so it is recreated from the sample data.
 - `--verbose`: print each tool the assistant calls, with its arguments and outcome.
@@ -261,6 +264,101 @@ More things to try:
 - `login M001` then "can I keep Dune longer?". The renewal is refused because the loan is overdue, and the agent explains why.
 - Ask about *The Lighthouse Ledger*. Its description contains a planted instruction, which the agent ignores.
 - `login LIB001`, then `return C0001`. If someone is waiting for The Hobbit, the copy is held for them and they see a notice when they next log in.
+
+---
+
+## Standalone CLI
+
+The CLI can be built as one runnable file and run directly from a terminal, without Gradle. It takes its input from a task file, from standard input or from the keyboard.
+
+**Build it once** (JDK 21):
+
+| Shell | Command |
+|---|---|
+| Windows PowerShell | `.\gradlew.bat cliJar` |
+| macOS / Linux | `./gradlew cliJar` |
+
+This writes `build/libs/library-agent-cli.jar`. Run it from the project folder, so that it finds your `.env` file and the `data` folder.
+
+**Run a task file:**
+
+```bash
+java -jar build/libs/library-agent-cli.jar --input examples/task.txt
+```
+
+Each line of the file is one command or one plain-language request, exactly as you would type it. The CLI runs the lines in order, prints each line with its result and exits at the end of the file. [examples/task.txt](examples/task.txt) contains:
+
+```text
+login M001
+Find science fiction books under 320 pages
+Reserve the second one
+account
+undo
+```
+
+Output, with the repeated book lists left out (the assistant's wording varies between runs):
+
+```text
+Library Agent CLI. Type 'help' for commands, 'exit' to quit.
+> login M001
+Welcome, Alex Morgan.
+[Notice: Overdue] You have 1 overdue loan(s). Type 'account' for details.
+M001> Find science fiction books under 320 pages
+(thinking...)
+Here are the science fiction books under 320 pages:
+
+1. Foundation by Isaac Asimov, 255 pages. 1 of 1 copies free.
+2. Klara and the Sun by Kazuo Ishiguro, 303 pages. 1 of 1 copies free.
+3. Orbit of Small Things by Devin Okafor, 224 pages. 2 of 2 copies free.
+4. The Left Hand of Darkness by Ursula K. Le Guin, 304 pages. 1 of 1 copies free.
+
+Would you like me to reserve any of them or add them to a reading list?
+M001> Reserve the second one
+(thinking...)
+I've reserved Klara and the Sun by Kazuo Ishiguro. The copy is on the hold shelf for you until 2026-11-26.
+M001> account
+Account: Alex Morgan (M001, standard, limit 5 loans)
+Loans (1):
+  L0001 | Dune (copy C0009) | OVERDUE since 2026-11-14 | renewals 0/2
+Holds (1):
+  R0001 | Klara and the Sun | READY: copy C0017 held until 2026-11-26
+Fees owed: $2.25
+Reading lists: none
+M001> undo
+Undone: reservation of "Klara and the Sun".
+M001>
+AI usage this session: 8 input tokens (16269 read from cache, 6353 written to cache), 492 output tokens, about $0.0241.
+Goodbye.
+```
+
+**Options:**
+
+| Option | What it does |
+|---|---|
+| `--input <file>` | Read commands and plain-language requests from a file, one per line, and exit at the end of the file. Without it, the CLI reads the keyboard |
+| `--member <id>` | Log in as this member on start, for example `M001`, or `LIB001` for the librarian |
+| `--json` | Print one line of JSON per input line, with no banner or prompts. For scripts and automated tests |
+| `--verbose` | Print each tool the assistant calls, with its arguments and outcome |
+| `--reset-db` | Delete the database first, so that it is recreated from the sample data |
+| `--help` | Print the options and exit |
+
+**Other ways to give input:**
+
+```bash
+# Standard input: pipe or redirect
+java -jar build/libs/library-agent-cli.jar < examples/task.txt
+echo "search dune" | java -jar build/libs/library-agent-cli.jar
+
+# Machine-readable output for a test harness
+java -jar build/libs/library-agent-cli.jar --json --input examples/task.txt
+
+# Interactive, as the librarian, on fresh sample data
+java -jar build/libs/library-agent-cli.jar --reset-db --member LIB001
+```
+
+**The API key** is not a command-line option, so that it never appears in a command history or a process list. The CLI reads `ANTHROPIC_API_KEY` from `.env` or from the environment, as described under [Setup](#setup). Without a key the commands still work and plain-language lines report that the assistant is unavailable.
+
+An unreadable or missing input file stops the CLI with a message and exit code 2.
 
 ---
 
@@ -354,7 +452,7 @@ The image is built in two stages (`Dockerfile`): a JDK 21 stage runs the Gradle 
 |---|---|
 | Language and build | Java 21, Gradle with the wrapper checked in (`gradlew`), so no separate Gradle install |
 | Libraries | JavaFX 21.0.13 (`javafx.controls`), Anthropic Java SDK 3.2.0, `sqlite-jdbc` 3.53.4.0, Jackson 2.22.4, JUnit 6.1.3 |
-| Size | 128 main source files (about 9,900 lines); 30 test classes, 229 tests |
+| Size | 128 main source files (about 9,900 lines); 30 test classes, 231 tests |
 | Storage | One SQLite file (`data/library.db`), created from `resources/db/schema.sql` and filled from `resources/seed/library.json` on first run |
 | Object model | Each repository keeps one in-memory object per ID and writes changes through to SQLite, so a loan, its copy, its book and that book's hold queue are the same shared objects everywhere |
 | Atomic writes | A circulation action that changes several records (for example a return that passes the copy to the next person waiting) is written in one database transaction |
@@ -452,6 +550,6 @@ src/test/java/...  JUnit tests, mirroring the main packages
   - `CD1`–`CD7`: class diagrams, updated to the implemented code (domain, states and fees, services and commands with persistence, agent core, tools, user interfaces, web version). The Stage 1 versions are in `stage1-report.pdf` and the git history
   - `SD01`–`SD08`: sequence diagrams for the key scenarios
 - **Stage 2 implementation report** (`stage2-report.pdf`): what was built, design changes and their reasons, design patterns, the AI-assisted development log and the demonstration index.
-- **Demonstration recordings** (repository root): `demo-gui.mp4` shows the JavaFX GUI and `demo-cli.mp4` shows the CLI, both running the real application. The report's demonstration index gives the time of each feature.
+- **Demonstration recordings** (repository root): `demo-gui.mp4` shows the JavaFX GUI and `demo-cli.mp4` shows the CLI, both running the real application, and `demo-full.mp4` plays the two in sequence (GUI first, then the same tasks in the CLI). The report's demonstration index gives the time of each feature.
 
 This project was developed with AI assistance (Claude Code), as required by the course. The Stage 2 report documents how.
